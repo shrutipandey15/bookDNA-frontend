@@ -1,0 +1,118 @@
+/* Loading */
+.loading-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); color: var(--text-muted); }
+.loading-glyph { font-size: 40px; animation: pulse 2s ease infinite; margin-bottom: 16px; }
+.loading-text { font-size: 13px; font-family: var(--font-mono); }
+
+/* App */
+.app { min-height: 100vh; background: var(--bg); }
+
+/* Header */
+.header { padding: 28px 20px 0; max-width: 900px; margin: 0 auto; }
+.brand { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+.logo { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+.logo span { color: var(--rust); }
+.subtitle { font-size: 12px; color: var(--text-muted); font-weight: 300; margin-top: 2px; }
+
+.header-right { display: flex; gap: 8px; align-items: center; }
+.gen-btn {
+  background: linear-gradient(135deg, var(--rust), var(--rust-light));
+  border: none; border-radius: 8px; padding: 8px 16px;
+  color: #fff; font-size: 11px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  animation: glowPulse 3s ease infinite;
+}
+.gen-btn:disabled { opacity: 0.5; animation: none; }
+.logout-btn {
+  background: #111114; border: 1px solid var(--border);
+  border-radius: 8px; width: 34px; height: 34px;
+  color: var(--text-muted); font-size: 14px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.logout-btn:hover { background: #1a1a20; color: var(--text-primary); }
+
+/* Nav */
+.nav { display: flex; gap: 20px; border-bottom: 1px solid var(--border); }
+.nav-tab {
+  padding-bottom: 10px; font-size: 12px; font-weight: 400;
+  color: var(--text-muted); cursor: pointer;
+  position: relative; display: flex; align-items: center; gap: 5px;
+  transition: color 0.2s;
+}
+.nav-tab.active { color: var(--text-primary); font-weight: 600; }
+.nav-tab.active::after {
+  content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+  height: 2px; background: var(--rust); border-radius: 1px;
+}
+.tab-count {
+  font-size: 9px; font-family: var(--font-mono);
+  background: #111114; padding: 1px 5px; border-radius: 8px;
+}
+.nav-tab.active .tab-count { background: rgba(196,85,58,0.13); color: var(--rust); }
+
+/* Main */
+.main { max-width: 900px; margin: 0 auto; padding: 20px 20px 80px; }
+
+/* Shelf */
+.progress-wrap {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; margin-bottom: 16px;
+}
+.progress-info {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--text-secondary);
+  letter-spacing: 1px; text-transform: uppercase;
+  font-family: var(--font-mono); margin-bottom: 8px;
+}
+.progress-count { color: var(--rust); }
+.progress-track { height: 3px; background: #111114; border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--rust), var(--gold)); border-radius: 2px; transition: width 0.5s; }
+
+.shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 20px 14px;
+  margin-bottom: 16px;
+}
+
+.add-btn {
+  width: 100%; background: transparent;
+  border: 1px dashed var(--border); border-radius: 12px;
+  padding: 18px; color: var(--text-muted);
+  font-size: 13px; cursor: pointer;
+  transition: border-color 0.2s;
+}
+.add-btn:hover { border-color: rgba(196,85,58,0.25); }
+
+/* DNA section */
+.dna-section { padding-top: 16px; }
+.dna-reveal-label {
+  text-align: center; font-family: var(--font-mono);
+  font-size: 10px; color: var(--text-muted);
+  letter-spacing: 3px; text-transform: uppercase;
+  margin-bottom: 20px; animation: pulse 2s ease infinite;
+}
+.dna-actions { display: flex; gap: 8px; justify-content: center; margin-top: 24px; }
+.dna-action-btn {
+  background: color-mix(in srgb, var(--ab) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ab) 25%, transparent);
+  border-radius: 8px; padding: 10px 20px;
+  color: var(--ab); font-size: 12px;
+  cursor: pointer; font-weight: 500;
+}
+
+.back-btn {
+  margin-top: 16px; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 20px; color: var(--text-secondary);
+  font-size: 12px; cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .shelf-grid { grid-template-columns: repeat(3, 1fr); gap: 14px 8px; }
+  .header { padding: 20px 16px 0; }
+  .main { padding: 16px 16px 80px; }
+  .nav { gap: 14px; overflow-x: auto; }
+  .nav-tab { white-space: nowrap; }
+}
