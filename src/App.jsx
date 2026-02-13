@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  isAuthed, clearTokens, getMe,
   getEntries, getDNAProfile, getHeatmap, getStats, generateDNA,
 } from "./services/api";
+import { useAuth } from "./contexts/AuthContext";
 import AuthPage from "./pages/AuthPage";
 import BookCard from "./components/BookCard";
 import EntryModal from "./components/EntryModal";
@@ -11,9 +11,17 @@ import { Heatmap, Echoes, Stats } from "./components/Panels";
 import ErrorBoundary from "./components/ErrorBoundary";
 import "./App.css";
 
+function TabLoader({ label }) {
+  return (
+    <div className="tab-loader">
+      <div className="tab-loader-spinner">◈</div>
+      <div className="tab-loader-text">{label || "Loading..."}</div>
+    </div>
+  );
+}
+
 export default function App() {
-  const [authed, setAuthed] = useState(isAuthed());
-  const [user, setUser] = useState(null);
+  const { authed, user, loading: authLoading, logout } = useAuth();
   const [entries, setEntries] = useState([]);
   const [tab, setTab] = useState("shelf");
   const [modal, setModal] = useState(null);
@@ -22,18 +30,17 @@ export default function App() {
   const [stats, setStatsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [userData, entriesData, profile, hm, st] = await Promise.all([
-        getMe(),
+      const [entriesData, profile, hm, st] = await Promise.all([
         getEntries(),
         getDNAProfile(),
         getHeatmap(),
         getStats(),
       ]);
-      if (userData) setUser(userData);
       if (entriesData) setEntries(entriesData.entries || []);
       if (profile) setDnaProfile(profile);
       if (hm) setHeatmapData(hm);
@@ -48,10 +55,21 @@ export default function App() {
     if (authed) loadData();
   }, [authed, loadData]);
 
-  const refreshAnalytics = () => {
-    getDNAProfile().then((d) => d && setDnaProfile(d));
-    getHeatmap().then((d) => d && setHeatmapData(d));
-    getStats().then((d) => d && setStatsData(d));
+  const refreshAnalytics = async () => {
+    setRefreshing(true);
+    try {
+      const [profile, hm, st] = await Promise.all([
+        getDNAProfile(),
+        getHeatmap(),
+        getStats(),
+      ]);
+      if (profile) setDnaProfile(profile);
+      if (hm) setHeatmapData(hm);
+      if (st) setStatsData(st);
+    } catch (err) {
+      console.error("Failed to refresh analytics:", err);
+    }
+    setRefreshing(false);
   };
 
   const handleSaveEntry = (saved) => {
@@ -87,14 +105,24 @@ export default function App() {
     setGenerating(false);
   };
 
-  const logout = () => {
-    clearTokens();
-    setAuthed(false);
-    setUser(null);
+  const handleLogout = () => {
+    logout();
     setEntries([]);
+    setDnaProfile(null);
+    setHeatmapData(null);
+    setStatsData(null);
   };
 
-  if (!authed) return <AuthPage onAuth={() => setAuthed(true)} />;
+  if (authLoading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-glyph">◈</div>
+        <div className="loading-text">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!authed) return <AuthPage />;
 
   if (loading) {
     return (
@@ -125,10 +153,10 @@ export default function App() {
           <div className="header-right">
             {canGenerate && tab !== "dna" && (
               <button className="gen-btn" onClick={handleGenerateDNA} disabled={generating}>
-                {generating ? "..." : "✦ Generate DNA"}
+                {generating ? "✦ Analyzing..." : "✦ Generate DNA"}
               </button>
             )}
-            <button className="logout-btn" onClick={logout} title="Logout">↗</button>
+            <button className="logout-btn" onClick={handleLogout} title="Logout">↗</button>
           </div>
         </div>
         <nav className="nav">
@@ -177,9 +205,9 @@ export default function App() {
           </ErrorBoundary>
         )}
 
-        {tab === "heatmap" && <ErrorBoundary name="Heatmap"><Heatmap data={heatmap} /></ErrorBoundary>}
+        {tab === "heatmap" && <ErrorBoundary name="Heatmap">{refreshing ? <TabLoader label="Updating heatmap..." /> : <Heatmap data={heatmap} />}</ErrorBoundary>}
         {tab === "echoes" && <ErrorBoundary name="Echoes"><Echoes entries={entries} /></ErrorBoundary>}
-        {tab === "stats" && <ErrorBoundary name="Stats"><Stats stats={stats} /></ErrorBoundary>}
+        {tab === "stats" && <ErrorBoundary name="Stats">{refreshing ? <TabLoader label="Crunching numbers..." /> : <Stats stats={stats} />}</ErrorBoundary>}
 
         {tab === "dna" && (
           <ErrorBoundary name="DNA">

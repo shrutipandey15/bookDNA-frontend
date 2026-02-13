@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { register, login } from "../services/api";
+import { useAuth } from "../contexts/AuthContext";
 import "./AuthPage.css";
 
-export default function AuthPage({ onAuth }) {
+export default function AuthPage() {
+  const { login, register } = useAuth();
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -20,7 +21,6 @@ export default function AuthPage({ onAuth }) {
         await register(email, username, password, displayName);
       }
       await login(email, password);
-      onAuth();
     } catch (err) {
       setError(err.message);
     } finally {

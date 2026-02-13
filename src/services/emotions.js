@@ -17,7 +17,3 @@ export function getPrimaryEmotion(entry) {
   const id = entry?.emotions?.[0]?.emotion_id;
   return EMOTIONS[id] || { color: "#666", icon: "◈", label: "?" };
 }
-
-export function coverUrl(title) {
-  return `https://covers.openlibrary.org/b/title/${encodeURIComponent(title)}-M.jpg?default=false`;
-}

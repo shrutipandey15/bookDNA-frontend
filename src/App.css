@@ -116,3 +116,29 @@
   .nav { gap: 14px; overflow-x: auto; }
   .nav-tab { white-space: nowrap; }
 }
+
+/* Tab loader */
+.tab-loader {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 60px 20px;
+  gap: 12px;
+}
+.tab-loader-spinner {
+  font-size: 28px;
+  animation: pulse 1.5s ease infinite;
+  color: var(--text-muted);
+}
+.tab-loader-text {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+/* Generate button loading */
+.gen-btn:disabled {
+  opacity: 0.7;
+  animation: none;
+  cursor: wait;
+}

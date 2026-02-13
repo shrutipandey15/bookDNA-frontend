@@ -15,6 +15,8 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   const [quote, setQuote] = useState(entry?.quote || "");
   const [publicEcho, setPublicEcho] = useState(entry?.public_echo || "");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(null);
 
   // Search state
   const [searchResults, setSearchResults] = useState([]);
@@ -97,6 +99,7 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   const handleSave = async () => {
     if (!title.trim()) return;
     setSaving(true);
+    setError(null);
     const data = {
       title: title.trim(),
       author: author.trim() || null,
@@ -116,6 +119,7 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
       }
       onSave(saved);
     } catch (err) {
+      setError(err.message || "Failed to save. Try again.");
       console.error(err);
     }
     setSaving(false);
@@ -123,8 +127,16 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
 
   const handleDelete = async () => {
     if (!entry?.id) return;
-    await deleteEntry(entry.id);
-    onDelete(entry.id);
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteEntry(entry.id);
+      onDelete(entry.id);
+    } catch (err) {
+      setError("Failed to delete. Try again.");
+      console.error(err);
+    }
+    setDeleting(false);
   };
 
   const intLabels = [
@@ -268,15 +280,16 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
         </div>
 
         <div className="modal-actions">
+          {error && <div className="m-error">{error}</div>}
           {entry?.id && (
-            <button className="m-btn m-btn-danger" onClick={handleDelete}>
-              Delete
+            <button className="m-btn m-btn-danger" onClick={handleDelete} disabled={deleting || saving}>
+              {deleting ? "Deleting..." : "Delete"}
             </button>
           )}
           <button
             className="m-btn m-btn-primary"
             onClick={handleSave}
-            disabled={saving || !title.trim()}
+            disabled={saving || deleting || !title.trim()}
           >
             {saving ? "Saving..." : entry?.id ? "Update" : "Add Book"}
           </button>

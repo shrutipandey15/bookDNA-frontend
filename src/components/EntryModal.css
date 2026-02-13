@@ -135,7 +135,11 @@
 .m-echo-input { background: transparent !important; border-color: rgba(107,58,93,0.13) !important; font-family: var(--font-display); font-style: italic; }
 .m-echo-hint { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
 
-.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
+.m-error {
+  font-size: 11px; color: #e55; flex: 1 1 100%;
+  text-align: center; margin-bottom: 4px;
+}
 .m-btn { border: none; border-radius: 8px; padding: 10px 20px; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; }
 .m-btn:disabled { opacity: 0.5; }
 .m-btn-primary { background: linear-gradient(135deg, var(--rust), var(--rust-light)); color: #fff; }

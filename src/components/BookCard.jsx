@@ -1,11 +1,31 @@
 import { useState } from "react";
-import { EMOTIONS, getPrimaryEmotion, coverUrl } from "../services/emotions";
+import { EMOTIONS, getPrimaryEmotion } from "../services/emotions";
 import "./BookCard.css";
 
+function openLibraryCover(title) {
+  return `https://covers.openlibrary.org/b/title/${encodeURIComponent(title)}-M.jpg?default=false`;
+}
+
 export default function BookCard({ entry, index, onClick }) {
+  const coverSources = [
+    entry.cover_url,
+    openLibraryCover(entry.title),
+  ].filter(Boolean);
+
+  const [coverIndex, setCoverIndex] = useState(0);
   const [coverLoaded, setCoverLoaded] = useState(false);
-  const [coverError, setCoverError] = useState(false);
+  const [allFailed, setAllFailed] = useState(coverSources.length === 0);
   const emo = getPrimaryEmotion(entry);
+
+  const handleCoverError = () => {
+    const next = coverIndex + 1;
+    if (next < coverSources.length) {
+      setCoverIndex(next);
+      setCoverLoaded(false);
+    } else {
+      setAllFailed(true);
+    }
+  };
 
   return (
     <div
@@ -16,16 +36,16 @@ export default function BookCard({ entry, index, onClick }) {
       <div className="book-cover-wrap">
         <div className="book-spine" style={{ background: emo.color }} />
         <div className="book-cover">
-          {!coverError && (
+          {!allFailed && (
             <img
-              src={coverUrl(entry.title)}
+              src={coverSources[coverIndex]}
               alt=""
               onLoad={() => setCoverLoaded(true)}
-              onError={() => setCoverError(true)}
+              onError={handleCoverError}
               className={`cover-img ${coverLoaded ? "loaded" : ""}`}
             />
           )}
-          {(!coverLoaded || coverError) && (
+          {(!coverLoaded || allFailed) && (
             <div
               className="cover-fallback"
               style={{ background: `linear-gradient(145deg, ${emo.color}33, #0c0c10)` }}
