@@ -165,3 +165,12 @@ export async function updateSettings(data) {
   if (!res.ok) throw new Error("Failed to update settings");
   return res.json();
 }
+
+// ── Book Search ──
+export async function searchBooks(query) {
+  if (!query || query.length < 2) return [];
+  const res = await apiFetch(`/books/search?q=${encodeURIComponent(query)}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.results || [];
+}

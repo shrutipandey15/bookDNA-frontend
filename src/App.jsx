@@ -8,6 +8,7 @@ import BookCard from "./components/BookCard";
 import EntryModal from "./components/EntryModal";
 import DNACard from "./components/DNACard";
 import { Heatmap, Echoes, Stats } from "./components/Panels";
+import ErrorBoundary from "./components/ErrorBoundary";
 import "./App.css";
 
 export default function App() {
@@ -146,6 +147,7 @@ export default function App() {
 
       <main className="main">
         {tab === "shelf" && (
+          <ErrorBoundary name="Shelf">
           <div className="shelf-section">
             {!canGenerate && entries.length > 0 && (
               <div className="progress-wrap">
@@ -172,13 +174,15 @@ export default function App() {
             </div>
             <button className="add-btn" onClick={() => setModal("new")}>+ Add Book</button>
           </div>
+          </ErrorBoundary>
         )}
 
-        {tab === "heatmap" && <Heatmap data={heatmap} />}
-        {tab === "echoes" && <Echoes entries={entries} />}
-        {tab === "stats" && <Stats stats={stats} />}
+        {tab === "heatmap" && <ErrorBoundary name="Heatmap"><Heatmap data={heatmap} /></ErrorBoundary>}
+        {tab === "echoes" && <ErrorBoundary name="Echoes"><Echoes entries={entries} /></ErrorBoundary>}
+        {tab === "stats" && <ErrorBoundary name="Stats"><Stats stats={stats} /></ErrorBoundary>}
 
         {tab === "dna" && (
+          <ErrorBoundary name="DNA">
           <div className="dna-section">
             {dnaProfile?.personality ? (
               <>
@@ -198,6 +202,7 @@ export default function App() {
               </div>
             )}
           </div>
+          </ErrorBoundary>
         )}
       </main>
 
