@@ -119,7 +119,11 @@ export async function updateEntry(id, data) {
 
 export async function deleteEntry(id) {
   const res = await apiFetch(`/entries/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete entry");
+  if (!res.ok) {
+    const err = new Error("Failed to delete entry");
+    err.status = res.status;
+    throw err;
+  }
 }
 
 // ── DNA ──

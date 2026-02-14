@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { EMO_LIST } from "../services/emotions";
-import { createEntry, updateEntry, deleteEntry, searchBooks } from "../services/api";
+import { searchBooks } from "../services/api";
 import "./EntryModal.css";
 
 export default function EntryModal({ entry, onSave, onDelete, onClose }) {
@@ -14,9 +14,6 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   );
   const [quote, setQuote] = useState(entry?.quote || "");
   const [publicEcho, setPublicEcho] = useState(entry?.public_echo || "");
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState(null);
 
   // Search state
   const [searchResults, setSearchResults] = useState([]);
@@ -27,6 +24,7 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   const resultsRef = useRef(null);
   const inputRef = useRef(null);
 
+  // Debounced search — fires 300ms after user stops typing
   useEffect(() => {
     if (entry?.id) return; // Don't search when editing existing entry
     if (title.length < 2) {
@@ -96,10 +94,8 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!title.trim()) return;
-    setSaving(true);
-    setError(null);
     const data = {
       title: title.trim(),
       author: author.trim() || null,
@@ -110,33 +106,15 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
       quote: quote.trim() || null,
       public_echo: publicEcho.trim() || null,
     };
-    try {
-      let saved;
-      if (entry?.id) {
-        saved = await updateEntry(entry.id, data);
-      } else {
-        saved = await createEntry(data);
-      }
-      onSave(saved);
-    } catch (err) {
-      setError(err.message || "Failed to save. Try again.");
-      console.error(err);
-    }
-    setSaving(false);
+
+    // Pass data up — App handles optimistic update + API call
+    onSave(data, entry?.id || null);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!entry?.id) return;
-    setDeleting(true);
-    setError(null);
-    try {
-      await deleteEntry(entry.id);
-      onDelete(entry.id);
-    } catch (err) {
-      setError("Failed to delete. Try again.");
-      console.error(err);
-    }
-    setDeleting(false);
+    // Pass id up — App handles optimistic delete + API call
+    onDelete(entry.id);
   };
 
   const intLabels = [
@@ -280,18 +258,17 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
         </div>
 
         <div className="modal-actions">
-          {error && <div className="m-error">{error}</div>}
           {entry?.id && (
-            <button className="m-btn m-btn-danger" onClick={handleDelete} disabled={deleting || saving}>
-              {deleting ? "Deleting..." : "Delete"}
+            <button className="m-btn m-btn-danger" onClick={handleDelete}>
+              Delete
             </button>
           )}
           <button
             className="m-btn m-btn-primary"
             onClick={handleSave}
-            disabled={saving || deleting || !title.trim()}
+            disabled={!title.trim()}
           >
-            {saving ? "Saving..." : entry?.id ? "Update" : "Add Book"}
+            {entry?.id ? "Update" : "Add Book"}
           </button>
         </div>
       </div>

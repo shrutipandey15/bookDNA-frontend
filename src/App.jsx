@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   getEntries, getDNAProfile, getHeatmap, getStats, generateDNA,
+  createEntry, updateEntry, deleteEntry,
 } from "./services/api";
 import { useAuth } from "./contexts/AuthContext";
 import AuthPage from "./pages/AuthPage";
@@ -9,6 +10,8 @@ import EntryModal from "./components/EntryModal";
 import DNACard from "./components/DNACard";
 import { Heatmap, Echoes, Stats } from "./components/Panels";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { EMOTIONS, EMO_LIST } from "./services/emotions";
+import { getCachedEntries, setCachedEntries, clearCache } from "./services/offline";
 import "./App.css";
 
 function TabLoader({ label }) {
@@ -31,9 +34,26 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [filterEmotion, setFilterEmotion] = useState(null);
+  const [sortBy, setSortBy] = useState("date");
+
+  const showToast = (message, type = "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const loadData = useCallback(async () => {
-    setLoading(true);
+    // Serve cached entries instantly
+    const cached = getCachedEntries();
+    if (cached) {
+      setEntries(cached);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    // Fetch fresh data from server
     try {
       const [entriesData, profile, hm, st] = await Promise.all([
         getEntries(),
@@ -41,7 +61,10 @@ export default function App() {
         getHeatmap(),
         getStats(),
       ]);
-      if (entriesData) setEntries(entriesData.entries || []);
+      if (entriesData) {
+        setEntries(entriesData.entries || []);
+        setCachedEntries(entriesData.entries || []);
+      }
       if (profile) setDnaProfile(profile);
       if (hm) setHeatmapData(hm);
       if (st) setStatsData(st);
@@ -54,6 +77,21 @@ export default function App() {
   useEffect(() => {
     if (authed) loadData();
   }, [authed, loadData]);
+
+  const filteredEntries = useMemo(() => {
+    let result = entries;
+    if (filterEmotion) {
+      result = result.filter((e) =>
+        e.emotions?.some((em) => em.emotion_id === filterEmotion)
+      );
+    }
+    if (sortBy === "intensity") {
+      result = [...result].sort((a, b) => (b.intensity || 0) - (a.intensity || 0));
+    } else if (sortBy === "title") {
+      result = [...result].sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+    }
+    return result;
+  }, [entries, filterEmotion, sortBy]);
 
   const refreshAnalytics = async () => {
     setRefreshing(true);
@@ -72,24 +110,107 @@ export default function App() {
     setRefreshing(false);
   };
 
-  const handleSaveEntry = (saved) => {
-    setEntries((prev) => {
-      const idx = prev.findIndex((e) => e.id === saved.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = saved;
+  const handleSaveEntry = (data, existingId) => {
+    const prevEntries = [...entries];
+    // Temp IDs aren't real server entries — treat as new
+    const isUpdate = existingId && !String(existingId).startsWith("temp-");
+
+    if (isUpdate) {
+      const optimistic = { ...entries.find((e) => e.id === existingId), ...data };
+      setEntries((prev) => {
+        const next = prev.map((e) => (e.id === existingId ? optimistic : e));
+        setCachedEntries(next);
         return next;
-      }
-      return [saved, ...prev];
-    });
-    setModal(null);
-    setTimeout(refreshAnalytics, 300);
+      });
+      setModal(null);
+
+      updateEntry(existingId, data)
+        .then((saved) => {
+          setEntries((prev) => {
+            const next = prev.map((e) => (e.id === existingId ? saved : e));
+            setCachedEntries(next);
+            return next;
+          });
+          setTimeout(refreshAnalytics, 300);
+        })
+        .catch((err) => {
+          console.error("Update failed, rolling back:", err);
+          setEntries(prevEntries);
+          setCachedEntries(prevEntries);
+          showToast("Failed to update — your changes were reverted.");
+        });
+    } else {
+      const tempId = `temp-${Date.now()}`;
+      const optimistic = {
+        ...data,
+        id: tempId,
+        emotions: data.emotions.map((e) => ({ emotion_id: e.emotion_id, strength: e.strength })),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setEntries((prev) => {
+        const next = [optimistic, ...prev];
+        setCachedEntries(next);
+        return next;
+      });
+      setModal(null);
+
+      createEntry(data)
+        .then((saved) => {
+          setEntries((prev) => {
+            // Replace temp entry, or if loadData already ran and temp is gone,
+            // add saved only if not already present (dedup by server ID)
+            const hasTemp = prev.some((e) => e.id === tempId);
+            const hasReal = prev.some((e) => e.id === saved.id);
+            let next;
+            if (hasTemp) {
+              next = prev.map((e) => (e.id === tempId ? saved : e));
+            } else if (!hasReal) {
+              next = [saved, ...prev];
+            } else {
+              next = prev;
+            }
+            setCachedEntries(next);
+            return next;
+          });
+          setTimeout(refreshAnalytics, 300);
+        })
+        .catch((err) => {
+          console.error("Create failed, rolling back:", err);
+          setEntries(prevEntries);
+          setCachedEntries(prevEntries);
+          showToast("Failed to add book — please try again.");
+        });
+    }
   };
 
   const handleDeleteEntry = (id) => {
-    setEntries((prev) => prev.filter((e) => e.id !== id));
+    const prevEntries = [...entries];
+    setEntries((prev) => {
+      const next = prev.filter((e) => e.id !== id);
+      setCachedEntries(next);
+      return next;
+    });
     setModal(null);
-    setTimeout(refreshAnalytics, 300);
+
+    // Temp entries (from optimistic add) don't exist on server — just remove locally
+    if (String(id).startsWith("temp-")) return;
+
+    deleteEntry(id)
+      .then(() => {
+        setTimeout(refreshAnalytics, 300);
+      })
+      .catch((err) => {
+        // 404 means already gone from server — that's fine, keep it deleted locally
+        if (err.status === 404) {
+          console.log("Entry already deleted on server, keeping local state.");
+          return;
+        }
+        console.error("Delete failed, rolling back:", err);
+        setEntries(prevEntries);
+        setCachedEntries(prevEntries);
+        showToast("Failed to delete — the entry has been restored.");
+      });
   };
 
   const handleGenerateDNA = async () => {
@@ -99,14 +220,16 @@ export default function App() {
       setTab("dna");
       const profile = await getDNAProfile();
       if (profile) setDnaProfile(profile);
+      showToast("Your DNA has been revealed ✦", "success");
     } catch (err) {
-      alert(err.message);
+      showToast(err.message || "Failed to generate DNA.");
     }
     setGenerating(false);
   };
 
   const handleLogout = () => {
     logout();
+    clearCache();
     setEntries([]);
     setDnaProfile(null);
     setHeatmapData(null);
@@ -188,6 +311,46 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {entries.length > 0 && (
+              <div className="shelf-controls">
+                <div className="shelf-filters">
+                  <button
+                    className={`sf-chip ${!filterEmotion ? "active" : ""}`}
+                    onClick={() => setFilterEmotion(null)}
+                  >All</button>
+                  {EMO_LIST.map(([id, e]) => {
+                    const count = entries.filter((en) =>
+                      en.emotions?.some((em) => em.emotion_id === id)
+                    ).length;
+                    if (count === 0) return null;
+                    return (
+                      <button
+                        key={id}
+                        className={`sf-chip ${filterEmotion === id ? "active" : ""}`}
+                        style={{ "--fc": e.color }}
+                        onClick={() => setFilterEmotion(filterEmotion === id ? null : id)}
+                      >
+                        {e.icon} {e.label}
+                        <span className="sf-count">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="shelf-sort">
+                  <select
+                    className="ss-select"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                  >
+                    <option value="date">Newest</option>
+                    <option value="intensity">Intensity</option>
+                    <option value="title">A → Z</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
             {entries.length === 0 && (
               <div className="empty-state">
                 <div className="empty-glyph">📚</div>
@@ -195,8 +358,17 @@ export default function App() {
                 <div className="empty-sub">Add your first book to start building your emotional fingerprint</div>
               </div>
             )}
+            {entries.length > 0 && filteredEntries.length === 0 && (
+              <div className="empty-state">
+                <div className="empty-glyph">{EMOTIONS[filterEmotion]?.icon || "🔍"}</div>
+                <div className="empty-title">No books with this emotion</div>
+                <div className="empty-sub">
+                  <button className="clear-filter-btn" onClick={() => setFilterEmotion(null)}>Clear filter</button>
+                </div>
+              </div>
+            )}
             <div className="shelf-grid">
-              {entries.map((entry, i) => (
+              {filteredEntries.map((entry, i) => (
                 <BookCard key={entry.id} entry={entry} index={i} onClick={() => setModal(entry)} />
               ))}
             </div>
@@ -241,6 +413,12 @@ export default function App() {
           onDelete={handleDeleteEntry}
           onClose={() => setModal(null)}
         />
+      )}
+
+      {toast && (
+        <div className={`toast toast-${toast.type}`} onClick={() => setToast(null)}>
+          {toast.message}
+        </div>
       )}
     </div>
   );
