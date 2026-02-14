@@ -27,7 +27,7 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   // Debounced search — fires 300ms after user stops typing
   useEffect(() => {
     if (entry?.id) return; // Don't search when editing existing entry
-    if (title.length < 2) {
+    if (title.length < 3) {
       setSearchResults([]);
       setShowResults(false);
       return;
@@ -38,14 +38,14 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
     searchTimeout.current = setTimeout(async () => {
       try {
         const results = await searchBooks(title);
-        setSearchResults(results);
+        setSearchResults(results.slice(0, 5));
         setShowResults(results.length > 0);
         setSelectedIndex(-1);
       } catch {
         setSearchResults([]);
       }
       setSearching(false);
-    }, 300);
+    }, 500);
 
     return () => clearTimeout(searchTimeout.current);
   }, [title, entry?.id]);

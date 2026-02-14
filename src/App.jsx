@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   getEntries, getDNAProfile, getHeatmap, getStats, generateDNA,
   createEntry, updateEntry, deleteEntry,
@@ -37,6 +37,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [filterEmotion, setFilterEmotion] = useState(null);
   const [sortBy, setSortBy] = useState("date");
+  const dnaCardRef = useRef(null);
 
   const showToast = (message, type = "error") => {
     setToast({ message, type });
@@ -227,6 +228,50 @@ export default function App() {
     setGenerating(false);
   };
 
+  const handleSaveCard = async () => {
+    if (!dnaCardRef.current) return;
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      const canvas = await html2canvas(dnaCardRef.current, {
+        backgroundColor: "#0c0c10",
+        scale: 2,
+        useCORS: true,
+      });
+      const link = document.createElement("a");
+      link.download = `bookdna-${user?.username || "card"}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      showToast("Card saved", "success");
+    } catch (err) {
+      console.error("Save card failed:", err);
+      showToast("Couldn't save card — try a screenshot instead.");
+    }
+  };
+
+  const handleShareDNA = async () => {
+    const shareUrl = `${window.location.origin}/u/${user?.username}`;
+    const shareData = {
+      title: "My Book DNA",
+      text: `I'm ${dnaProfile?.personality?.name} — discover your reading personality at Book DNA`,
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast("Link copied to clipboard", "success");
+      }
+    } catch (err) {
+      // User cancelled share sheet — not an error
+      if (err.name !== "AbortError") {
+        showToast("Couldn't share — link copied instead.");
+        try { await navigator.clipboard.writeText(shareUrl); } catch {}
+      }
+    }
+  };
+
   const handleLogout = () => {
     logout();
     clearCache();
@@ -387,10 +432,10 @@ export default function App() {
             {dnaProfile?.personality ? (
               <>
                 <div className="dna-reveal-label">Your Reading Personality</div>
-                <DNACard profile={dnaProfile} username={user?.username} />
+                <DNACard ref={dnaCardRef} profile={dnaProfile} username={user?.username} />
                 <div className="dna-actions">
-                  <button className="dna-action-btn" style={{ "--ab": "#C4553A" }}>📸 Save Card</button>
-                  <button className="dna-action-btn" style={{ "--ab": "#6B3A5D" }}>✦ Share DNA</button>
+                  <button className="dna-action-btn" style={{ "--ab": "#C4553A" }} onClick={handleSaveCard}>📸 Save Card</button>
+                  <button className="dna-action-btn" style={{ "--ab": "#6B3A5D" }} onClick={handleShareDNA}>✦ Share DNA</button>
                 </div>
               </>
             ) : (

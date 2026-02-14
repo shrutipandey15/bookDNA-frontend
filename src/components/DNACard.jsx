@@ -1,14 +1,15 @@
+import { forwardRef } from "react";
 import { EMOTIONS } from "../services/emotions";
 import "./DNACard.css";
 
-export default function DNACard({ profile, username }) {
+const DNACard = forwardRef(function DNACard({ profile, username }, ref) {
   if (!profile?.personality) return null;
   const p = profile.personality;
   const top = profile.top_emotions?.slice(0, 5) || [];
   const maxC = top[0]?.count || 1;
 
   return (
-    <div className="dna-card" style={{ "--dc": p.color }}>
+    <div className="dna-card" ref={ref} style={{ "--dc": p.color }}>
       <div className="dna-glow" />
       <div className="dna-header">
         <div>
@@ -49,4 +50,6 @@ export default function DNACard({ profile, username }) {
       </div>
     </div>
   );
-}
+});
+
+export default DNACard;
