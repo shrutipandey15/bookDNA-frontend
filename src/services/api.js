@@ -1,4 +1,4 @@
-const API_BASE = "/api";
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 // ── Token management ──
 export function getTokens() {
@@ -45,7 +45,7 @@ async function apiFetch(path, opts = {}) {
       return apiFetch(path, { ...opts, _retried: true });
     } else {
       clearTokens();
-      window.location.reload();
+      window.location.href = "/";
     }
   }
 

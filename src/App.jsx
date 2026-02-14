@@ -116,9 +116,12 @@ export default function App() {
     // Temp IDs aren't real server entries — treat as new
     const isUpdate = existingId && !String(existingId).startsWith("temp-");
 
+    console.log("[SAVE]", { isUpdate, existingId, dataEmotions: data.emotions?.map(e => e.emotion_id) });
+
     if (isUpdate) {
-      const optimistic = { ...entries.find((e) => e.id === existingId), ...data };
       setEntries((prev) => {
+        const existing = prev.find((e) => e.id === existingId);
+        const optimistic = { ...existing, ...data };
         const next = prev.map((e) => (e.id === existingId ? optimistic : e));
         setCachedEntries(next);
         return next;
@@ -127,6 +130,7 @@ export default function App() {
 
       updateEntry(existingId, data)
         .then((saved) => {
+          console.log("[SAVE:THEN]", { savedEmotions: saved.emotions?.map(e => e.emotion_id) });
           setEntries((prev) => {
             const next = prev.map((e) => (e.id === existingId ? saved : e));
             setCachedEntries(next);
@@ -232,11 +236,59 @@ export default function App() {
     if (!dnaCardRef.current) return;
     try {
       const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(dnaCardRef.current, {
-        backgroundColor: "#0c0c10",
-        scale: 2,
-        useCORS: true,
+
+      // html2canvas can't parse color-mix() or color(srgb ...) syntax.
+      // Clone the card, resolve computed styles, and sanitize any
+      // unsupported color functions to rgba.
+      const original = dnaCardRef.current;
+      const clone = original.cloneNode(true);
+      clone.style.position = "fixed";
+      clone.style.left = "-9999px";
+      clone.style.top = "0";
+      document.body.appendChild(clone);
+
+      // Convert color(srgb r g b / a) to rgba()
+      const sanitizeColor = (val) => {
+        if (!val || typeof val !== "string") return val;
+        return val.replace(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*(?:\/\s*([\d.]+))?\)/g,
+          (_, r, g, b, a) => {
+            const ri = Math.round(parseFloat(r) * 255);
+            const gi = Math.round(parseFloat(g) * 255);
+            const bi = Math.round(parseFloat(b) * 255);
+            const ai = a !== undefined ? parseFloat(a) : 1;
+            return `rgba(${ri}, ${gi}, ${bi}, ${ai})`;
+          }
+        );
+      };
+
+      const resolveStyles = (src, dst) => {
+        const computed = window.getComputedStyle(src);
+        dst.style.cssText = "";
+        for (const prop of computed) {
+          let val = computed.getPropertyValue(prop);
+          val = sanitizeColor(val);
+          try { dst.style.setProperty(prop, val); } catch {}
+        }
+        for (let i = 0; i < src.children.length; i++) {
+          if (dst.children[i]) resolveStyles(src.children[i], dst.children[i]);
+        }
+      };
+      resolveStyles(original, clone);
+
+      // Kill all animations on clone — html2canvas captures frame 0 otherwise
+      clone.style.animation = "none";
+      clone.querySelectorAll("*").forEach((el) => {
+        el.style.animation = "none";
       });
+
+      const canvas = await html2canvas(clone, {
+        backgroundColor: "#0c0c10",
+        scale: 3,
+        useCORS: true,
+        logging: false,
+      });
+      document.body.removeChild(clone);
+
       const link = document.createElement("a");
       link.download = `bookdna-${user?.username || "card"}.png`;
       link.href = canvas.toDataURL("image/png");
@@ -250,25 +302,30 @@ export default function App() {
 
   const handleShareDNA = async () => {
     const shareUrl = `${window.location.origin}/u/${user?.username}`;
-    const shareData = {
-      title: "My Book DNA",
-      text: `I'm ${dnaProfile?.personality?.name} — discover your reading personality at Book DNA`,
-      url: shareUrl,
-    };
+    const shareText = `I'm "${dnaProfile?.personality?.name}" — discover your reading personality`;
+
+    // Try native share (mobile), fall back to clipboard
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "My Book DNA", text: shareText, url: shareUrl });
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return; // User cancelled
+      }
+    }
 
     try {
-      if (navigator.share && navigator.canShare?.(shareData)) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast("Link copied to clipboard", "success");
-      }
-    } catch (err) {
-      // User cancelled share sheet — not an error
-      if (err.name !== "AbortError") {
-        showToast("Couldn't share — link copied instead.");
-        try { await navigator.clipboard.writeText(shareUrl); } catch {}
-      }
+      await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+      showToast("Copied to clipboard", "success");
+    } catch {
+      // Fallback for older browsers
+      const input = document.createElement("input");
+      input.value = `${shareText}\n${shareUrl}`;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+      showToast("Copied to clipboard", "success");
     }
   };
 
