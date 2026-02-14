@@ -3,6 +3,7 @@ import { EMOTIONS, getPrimaryEmotion } from "../services/emotions";
 import "./BookCard.css";
 
 function openLibraryCover(title) {
+  if (!title) return null;
   return `https://covers.openlibrary.org/b/title/${encodeURIComponent(title)}-M.jpg?default=false`;
 }
 
@@ -27,6 +28,14 @@ export default function BookCard({ entry, index, onClick }) {
     }
   };
 
+  const handleImageLoad = (e) => {
+    if (e.target.naturalWidth < 10 || e.target.naturalHeight < 10) {
+      handleCoverError();
+    } else {
+      setCoverLoaded(true);
+    }
+  };
+
   return (
     <div
       className="book-card"
@@ -40,7 +49,7 @@ export default function BookCard({ entry, index, onClick }) {
             <img
               src={coverSources[coverIndex]}
               alt=""
-              onLoad={() => setCoverLoaded(true)}
+              onLoad={handleImageLoad}
               onError={handleCoverError}
               className={`cover-img ${coverLoaded ? "loaded" : ""}`}
             />
