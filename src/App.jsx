@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { Routes, Route, useParams, Link } from "react-router-dom";
 import {
   getEntries, getDNAProfile, getHeatmap, getStats, generateDNA,
   createEntry, updateEntry, deleteEntry,
+  getSharedDNA, generateShareToken
 } from "./services/api";
 import { useAuth } from "./contexts/AuthContext";
 import AuthPage from "./pages/AuthPage";
@@ -23,10 +25,74 @@ function TabLoader({ label }) {
   );
 }
 
-export default function App() {
+function SharedProfile() {
+  const { token } = useParams();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const { user: currentUser } = useAuth();
+
+  useEffect(() => {
+    setLoading(true);
+    getSharedDNA(token)
+      .then((data) => {
+        setProfile(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [token]);
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-glyph">◈</div>
+        <div className="loading-text">Deciphering Link...</div>
+      </div>
+    );
+  }
+
+  if (!profile || !profile.personality) {
+    return (
+      <div className="empty-state" style={{ height: "100vh" }}>
+        <div className="empty-glyph">?</div>
+        <div className="empty-title">Link Expired or Invalid</div>
+        <div className="empty-sub">This DNA profile is no longer accessible.</div>
+        <Link to="/" className="back-btn">Go Home</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app public-view">
+      <header className="header">
+        <div className="brand">
+          <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <div className="logo">BOOK <span>DNA</span></div>
+          </Link>
+        </div>
+        <div className="header-right">
+          <Link to="/" className="gen-btn">
+             {currentUser ? "My Dashboard" : "Get Your Own"}
+          </Link>
+        </div>
+      </header>
+      
+      <main className="main" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+         <div className="dna-reveal-label" style={{ marginTop: 0 }}>Reading Personality</div>
+         <DNACard profile={profile} username={profile.username || "Reader"} />
+      </main>
+    </div>
+  );
+}
+
+function Dashboard() {
   const { authed, user, loading: authLoading, logout } = useAuth();
   const [entries, setEntries] = useState([]);
-  const [tab, setTab] = useState("shelf");
+  
+  const [tab, setTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("view") === "dna" ? "dna" : "shelf";
+  });
+  
   const [modal, setModal] = useState(null);
   const [dnaProfile, setDnaProfile] = useState(null);
   const [heatmap, setHeatmapData] = useState(null);
@@ -37,6 +103,8 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [filterEmotion, setFilterEmotion] = useState(null);
   const [sortBy, setSortBy] = useState("date");
+  const [shareToken, setShareToken] = useState(null);
+  
   const dnaCardRef = useRef(null);
 
   const showToast = (message, type = "error") => {
@@ -45,7 +113,6 @@ export default function App() {
   };
 
   const loadData = useCallback(async () => {
-    // Serve cached entries instantly
     const cached = getCachedEntries();
     if (cached) {
       setEntries(cached);
@@ -54,7 +121,6 @@ export default function App() {
       setLoading(true);
     }
 
-    // Fetch fresh data from server
     try {
       const [entriesData, profile, hm, st] = await Promise.all([
         getEntries(),
@@ -66,7 +132,10 @@ export default function App() {
         setEntries(entriesData.entries || []);
         setCachedEntries(entriesData.entries || []);
       }
-      if (profile) setDnaProfile(profile);
+      if (profile) {
+        setDnaProfile(profile);
+        if (profile.share_token) setShareToken(profile.share_token);
+      }
       if (hm) setHeatmapData(hm);
       if (st) setStatsData(st);
     } catch (err) {
@@ -113,10 +182,7 @@ export default function App() {
 
   const handleSaveEntry = (data, existingId) => {
     const prevEntries = [...entries];
-    // Temp IDs aren't real server entries — treat as new
     const isUpdate = existingId && !String(existingId).startsWith("temp-");
-
-    console.log("[SAVE]", { isUpdate, existingId, dataEmotions: data.emotions?.map(e => e.emotion_id) });
 
     if (isUpdate) {
       setEntries((prev) => {
@@ -130,7 +196,6 @@ export default function App() {
 
       updateEntry(existingId, data)
         .then((saved) => {
-          console.log("[SAVE:THEN]", { savedEmotions: saved.emotions?.map(e => e.emotion_id) });
           setEntries((prev) => {
             const next = prev.map((e) => (e.id === existingId ? saved : e));
             setCachedEntries(next);
@@ -139,7 +204,6 @@ export default function App() {
           setTimeout(refreshAnalytics, 300);
         })
         .catch((err) => {
-          console.error("Update failed, rolling back:", err);
           setEntries(prevEntries);
           setCachedEntries(prevEntries);
           showToast("Failed to update — your changes were reverted.");
@@ -163,8 +227,6 @@ export default function App() {
       createEntry(data)
         .then((saved) => {
           setEntries((prev) => {
-            // Replace temp entry, or if loadData already ran and temp is gone,
-            // add saved only if not already present (dedup by server ID)
             const hasTemp = prev.some((e) => e.id === tempId);
             const hasReal = prev.some((e) => e.id === saved.id);
             let next;
@@ -181,7 +243,6 @@ export default function App() {
           setTimeout(refreshAnalytics, 300);
         })
         .catch((err) => {
-          console.error("Create failed, rolling back:", err);
           setEntries(prevEntries);
           setCachedEntries(prevEntries);
           showToast("Failed to add book — please try again.");
@@ -198,20 +259,12 @@ export default function App() {
     });
     setModal(null);
 
-    // Temp entries (from optimistic add) don't exist on server — just remove locally
     if (String(id).startsWith("temp-")) return;
 
     deleteEntry(id)
-      .then(() => {
-        setTimeout(refreshAnalytics, 300);
-      })
+      .then(() => setTimeout(refreshAnalytics, 300))
       .catch((err) => {
-        // 404 means already gone from server — that's fine, keep it deleted locally
-        if (err.status === 404) {
-          console.log("Entry already deleted on server, keeping local state.");
-          return;
-        }
-        console.error("Delete failed, rolling back:", err);
+        if (err.status === 404) return;
         setEntries(prevEntries);
         setCachedEntries(prevEntries);
         showToast("Failed to delete — the entry has been restored.");
@@ -221,7 +274,7 @@ export default function App() {
   const handleGenerateDNA = async () => {
     setGenerating(true);
     try {
-      const data = await generateDNA();
+      await generateDNA();
       setTab("dna");
       const profile = await getDNAProfile();
       if (profile) setDnaProfile(profile);
@@ -232,14 +285,53 @@ export default function App() {
     setGenerating(false);
   };
 
+  const handleShareDNA = async () => {
+    let tokenToShare = shareToken;
+    const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
+
+    if (!tokenToShare) {
+      try {
+        setGenerating(true);
+        const data = await generateShareToken();
+        tokenToShare = data.share_token;
+        setShareToken(data.share_token);
+        setGenerating(false);
+      } catch (err) {
+        setGenerating(false);
+        showToast("Failed to generate link");
+        return;
+      }
+    }
+
+    const shareUrl = `${baseUrl}/s/${tokenToShare}`;
+
+    if (navigator.share && navigator.canShare) {
+      try {
+        await navigator.share({ url: shareUrl });
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showToast("Secure link copied to clipboard", "success");
+    } catch {
+      const input = document.createElement("input");
+      input.value = shareUrl;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+      showToast("Link copied to clipboard", "success");
+    }
+  };
+
   const handleSaveCard = async () => {
     if (!dnaCardRef.current) return;
     try {
       const { default: html2canvas } = await import("html2canvas");
-
-      // html2canvas can't parse color-mix() or color(srgb ...) syntax.
-      // Clone the card, resolve computed styles, and sanitize any
-      // unsupported color functions to rgba.
       const original = dnaCardRef.current;
       const clone = original.cloneNode(true);
       clone.style.position = "fixed";
@@ -247,7 +339,6 @@ export default function App() {
       clone.style.top = "0";
       document.body.appendChild(clone);
 
-      // Convert color(srgb r g b / a) to rgba()
       const sanitizeColor = (val) => {
         if (!val || typeof val !== "string") return val;
         return val.replace(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*(?:\/\s*([\d.]+))?\)/g,
@@ -274,12 +365,8 @@ export default function App() {
         }
       };
       resolveStyles(original, clone);
-
-      // Kill all animations on clone — html2canvas captures frame 0 otherwise
       clone.style.animation = "none";
-      clone.querySelectorAll("*").forEach((el) => {
-        el.style.animation = "none";
-      });
+      clone.querySelectorAll("*").forEach((el) => { el.style.animation = "none"; });
 
       const canvas = await html2canvas(clone, {
         backgroundColor: "#0c0c10",
@@ -300,35 +387,6 @@ export default function App() {
     }
   };
 
-  const handleShareDNA = async () => {
-    const shareUrl = `${window.location.origin}/u/${user?.username}`;
-    const shareText = `I'm "${dnaProfile?.personality?.name}" — discover your reading personality`;
-
-    // Try native share (mobile), fall back to clipboard
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "My Book DNA", text: shareText, url: shareUrl });
-        return;
-      } catch (err) {
-        if (err.name === "AbortError") return; // User cancelled
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-      showToast("Copied to clipboard", "success");
-    } catch {
-      // Fallback for older browsers
-      const input = document.createElement("input");
-      input.value = `${shareText}\n${shareUrl}`;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      document.body.removeChild(input);
-      showToast("Copied to clipboard", "success");
-    }
-  };
-
   const handleLogout = () => {
     logout();
     clearCache();
@@ -338,25 +396,9 @@ export default function App() {
     setStatsData(null);
   };
 
-  if (authLoading) {
-    return (
-      <div className="loading-screen">
-        <div className="loading-glyph">◈</div>
-        <div className="loading-text">Loading...</div>
-      </div>
-    );
-  }
-
+  if (authLoading) return <div className="loading-screen"><div className="loading-glyph">◈</div></div>;
   if (!authed) return <AuthPage />;
-
-  if (loading) {
-    return (
-      <div className="loading-screen">
-        <div className="loading-glyph">◈</div>
-        <div className="loading-text">Loading your library...</div>
-      </div>
-    );
-  }
+  if (loading) return <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Loading library...</div></div>;
 
   const canGenerate = entries.length >= 3;
   const TABS = [
@@ -401,81 +443,81 @@ export default function App() {
       <main className="main">
         {tab === "shelf" && (
           <ErrorBoundary name="Shelf">
-          <div className="shelf-section">
-            {!canGenerate && entries.length > 0 && (
-              <div className="progress-wrap">
-                <div className="progress-info">
-                  <span>DNA Progress</span>
-                  <span className="progress-count">{entries.length} / 3</span>
+            <div className="shelf-section">
+              {!canGenerate && entries.length > 0 && (
+                <div className="progress-wrap">
+                  <div className="progress-info">
+                    <span>DNA Progress</span>
+                    <span className="progress-count">{entries.length} / 3</span>
+                  </div>
+                  <div className="progress-track">
+                    <div className="progress-fill" style={{ width: `${Math.min(100, (entries.length / 3) * 100)}%` }} />
+                  </div>
                 </div>
-                <div className="progress-track">
-                  <div className="progress-fill" style={{ width: `${Math.min(100, (entries.length / 3) * 100)}%` }} />
-                </div>
-              </div>
-            )}
+              )}
 
-            {entries.length > 0 && (
-              <div className="shelf-controls">
-                <div className="shelf-filters">
-                  <button
-                    className={`sf-chip ${!filterEmotion ? "active" : ""}`}
-                    onClick={() => setFilterEmotion(null)}
-                  >All</button>
-                  {EMO_LIST.map(([id, e]) => {
-                    const count = entries.filter((en) =>
-                      en.emotions?.some((em) => em.emotion_id === id)
-                    ).length;
-                    if (count === 0) return null;
-                    return (
-                      <button
-                        key={id}
-                        className={`sf-chip ${filterEmotion === id ? "active" : ""}`}
-                        style={{ "--fc": e.color }}
-                        onClick={() => setFilterEmotion(filterEmotion === id ? null : id)}
-                      >
-                        {e.icon} {e.label}
-                        <span className="sf-count">{count}</span>
-                      </button>
-                    );
-                  })}
+              {entries.length > 0 && (
+                <div className="shelf-controls">
+                  <div className="shelf-filters">
+                    <button
+                      className={`sf-chip ${!filterEmotion ? "active" : ""}`}
+                      onClick={() => setFilterEmotion(null)}
+                    >All</button>
+                    {EMO_LIST.map(([id, e]) => {
+                      const count = entries.filter((en) =>
+                        en.emotions?.some((em) => em.emotion_id === id)
+                      ).length;
+                      if (count === 0) return null;
+                      return (
+                        <button
+                          key={id}
+                          className={`sf-chip ${filterEmotion === id ? "active" : ""}`}
+                          style={{ "--fc": e.color }}
+                          onClick={() => setFilterEmotion(filterEmotion === id ? null : id)}
+                        >
+                          {e.icon} {e.label}
+                          <span className="sf-count">{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="shelf-sort">
+                    <select
+                      className="ss-select"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                    >
+                      <option value="date">Newest</option>
+                      <option value="intensity">Intensity</option>
+                      <option value="title">A → Z</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="shelf-sort">
-                  <select
-                    className="ss-select"
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                  >
-                    <option value="date">Newest</option>
-                    <option value="intensity">Intensity</option>
-                    <option value="title">A → Z</option>
-                  </select>
-                </div>
-              </div>
-            )}
+              )}
 
-            {entries.length === 0 && (
-              <div className="empty-state">
-                <div className="empty-glyph">📚</div>
-                <div className="empty-title">Your shelf is empty</div>
-                <div className="empty-sub">Add your first book to start building your emotional fingerprint</div>
-              </div>
-            )}
-            {entries.length > 0 && filteredEntries.length === 0 && (
-              <div className="empty-state">
-                <div className="empty-glyph">{EMOTIONS[filterEmotion]?.icon || "🔍"}</div>
-                <div className="empty-title">No books with this emotion</div>
-                <div className="empty-sub">
-                  <button className="clear-filter-btn" onClick={() => setFilterEmotion(null)}>Clear filter</button>
+              {entries.length === 0 && (
+                <div className="empty-state">
+                  <div className="empty-glyph">📚</div>
+                  <div className="empty-title">Your shelf is empty</div>
+                  <div className="empty-sub">Add your first book to start building your emotional fingerprint</div>
                 </div>
+              )}
+              {entries.length > 0 && filteredEntries.length === 0 && (
+                <div className="empty-state">
+                  <div className="empty-glyph">{EMOTIONS[filterEmotion]?.icon || "🔍"}</div>
+                  <div className="empty-title">No books with this emotion</div>
+                  <div className="empty-sub">
+                    <button className="clear-filter-btn" onClick={() => setFilterEmotion(null)}>Clear filter</button>
+                  </div>
+                </div>
+              )}
+              <div className="shelf-grid">
+                {filteredEntries.map((entry, i) => (
+                  <BookCard key={entry.id} entry={entry} index={i} onClick={() => setModal(entry)} />
+                ))}
               </div>
-            )}
-            <div className="shelf-grid">
-              {filteredEntries.map((entry, i) => (
-                <BookCard key={entry.id} entry={entry} index={i} onClick={() => setModal(entry)} />
-              ))}
+              <button className="add-btn" onClick={() => setModal("new")}>+ Add Book</button>
             </div>
-            <button className="add-btn" onClick={() => setModal("new")}>+ Add Book</button>
-          </div>
           </ErrorBoundary>
         )}
 
@@ -485,25 +527,31 @@ export default function App() {
 
         {tab === "dna" && (
           <ErrorBoundary name="DNA">
-          <div className="dna-section">
-            {dnaProfile?.personality ? (
-              <>
-                <div className="dna-reveal-label">Your Reading Personality</div>
-                <DNACard ref={dnaCardRef} profile={dnaProfile} username={user?.username} />
-                <div className="dna-actions">
-                  <button className="dna-action-btn" style={{ "--ab": "#C4553A" }} onClick={handleSaveCard}>📸 Save Card</button>
-                  <button className="dna-action-btn" style={{ "--ab": "#6B3A5D" }} onClick={handleShareDNA}>✦ Share DNA</button>
+            <div className="dna-section">
+              {dnaProfile?.personality ? (
+                <>
+                  <div className="dna-reveal-label">Your Reading Personality</div>
+                  <DNACard ref={dnaCardRef} profile={dnaProfile} username={user?.username} />
+                  <div className="dna-actions">
+                    <button className="dna-action-btn" style={{ "--ab": "#C4553A" }} onClick={handleSaveCard}>📸 Save Card</button>
+                    {/* Share Button updated to use secure token */}
+                    <button className="dna-action-btn" style={{ "--ab": "#6B3A5D" }} onClick={handleShareDNA}>✦ Share Secure Link</button>
+                  </div>
+                  {shareToken && (
+                     <div style={{textAlign:'center', marginTop:'10px', opacity: 0.5, fontSize: '0.8rem'}}>
+                        Link active: .../s/{shareToken.slice(0,6)}...
+                     </div>
+                  )}
+                </>
+              ) : (
+                <div className="empty-state">
+                  <div className="empty-glyph">◈</div>
+                  <div className="empty-title">Not enough data yet</div>
+                  <div className="empty-sub">Log at least 3 books with emotions to generate your DNA card</div>
+                  <button className="back-btn" onClick={() => setTab("shelf")}>← Back to Shelf</button>
                 </div>
-              </>
-            ) : (
-              <div className="empty-state">
-                <div className="empty-glyph">◈</div>
-                <div className="empty-title">Not enough data yet</div>
-                <div className="empty-sub">Log at least 3 books with emotions to generate your DNA card</div>
-                <button className="back-btn" onClick={() => setTab("shelf")}>← Back to Shelf</button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
           </ErrorBoundary>
         )}
       </main>
@@ -523,5 +571,14 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/s/:token" element={<SharedProfile />} />
+      <Route path="/" element={<Dashboard />} />
+    </Routes>
   );
 }

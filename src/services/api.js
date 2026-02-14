@@ -160,6 +160,18 @@ export async function getDNAHistory() {
   return res.json();
 }
 
+export async function generateShareToken() {
+  const res = await apiFetch("/user/share-token", { method: "POST" });
+  if (!res.ok) throw new Error("Failed to generate share link");
+  return res.json();
+}
+
+export async function getSharedDNA(token) {
+  const res = await apiFetch(`/public/shared/${token}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
 // ── User ──
 export async function updateSettings(data) {
   const res = await apiFetch("/user/settings", {
