@@ -9,6 +9,7 @@ import BookCard from "./components/BookCard";
 import EntryModal from "./components/EntryModal";
 import DNACard from "./components/DNACard";
 import EchoesPage from "./pages/EchoesPage";
+import SettingsPage from "./pages/SettingsPage";
 import { Heatmap, Stats } from "./components/Panels";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { EMO_LIST } from "./services/emotions";
@@ -140,7 +141,7 @@ function Dashboard() {
                 {generating ? "✦ Analyzing..." : "✦ Generate DNA"}
               </button>
             )}
-            <button className="logout-btn" onClick={handleLogout} title="Logout">↗</button>
+            <button className="logout-btn" onClick={() => navigate("/settings")} title="Settings">⚙</button>
           </div>
         </div>
         <nav className="nav">
@@ -157,6 +158,7 @@ function Dashboard() {
         {tab === "shelf" && (
           <ErrorBoundary name="Shelf">
             <div className="shelf-section">
+              <button className="add-btn" onClick={() => setModal("new")}>+ Add Book</button>
               {!canGenerate && entries.length > 0 && (
                 <div className="progress-wrap">
                   <div className="progress-info"><span>DNA Progress</span><span className="progress-count">{entries.length} / 3</span></div>
@@ -189,7 +191,6 @@ function Dashboard() {
               <div className="shelf-grid">
                 {filteredEntries.map((entry, i) => <BookCard key={entry.id} entry={entry} index={i} onClick={() => setModal(entry)} />)}
               </div>
-              <button className="add-btn" onClick={() => setModal("new")}>+ Add Book</button>
             </div>
           </ErrorBoundary>
         )}
@@ -237,6 +238,7 @@ export default function App() {
     <Routes>
       <Route path="/s/:token" element={<SharedProfile />} />
       <Route path="/echoes" element={authed ? <EchoesPage /> : <AuthPage />} />
+      <Route path="/settings" element={authed ? <SettingsPage /> : <AuthPage />} />
       <Route path="/" element={authed ? <Dashboard /> : <AuthPage />} />
     </Routes>
   );

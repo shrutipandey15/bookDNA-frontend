@@ -2,15 +2,16 @@ import { useState } from "react";
 import { EMOTIONS, getPrimaryEmotion } from "../services/emotions";
 import "./BookCard.css";
 
-function openLibraryCover(title) {
-  if (!title) return null;
-  return `https://covers.openlibrary.org/b/title/${encodeURIComponent(title)}-M.jpg?default=false`;
+function openLibraryCover(entry) {
+  if (entry.isbn) return `https://covers.openlibrary.org/b/isbn/${entry.isbn}-M.jpg?default=false`;
+  if (entry.title) return `https://covers.openlibrary.org/b/title/${encodeURIComponent(entry.title)}-M.jpg?default=false`;
+  return null;
 }
 
 export default function BookCard({ entry, index, onClick }) {
   const coverSources = [
     entry.cover_url,
-    openLibraryCover(entry.title),
+    openLibraryCover(entry),
   ].filter(Boolean);
 
   const [coverIndex, setCoverIndex] = useState(0);
@@ -29,11 +30,12 @@ export default function BookCard({ entry, index, onClick }) {
   };
 
   const handleImageLoad = (e) => {
-    if (e.target.naturalWidth < 10 || e.target.naturalHeight < 10) {
+    const img = e.target;
+    if (img.naturalWidth < 10 || img.naturalHeight < 10) {
       handleCoverError();
-    } else {
-      setCoverLoaded(true);
+      return;
     }
+    setCoverLoaded(true);
   };
 
   return (

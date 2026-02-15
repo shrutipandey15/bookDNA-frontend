@@ -178,12 +178,33 @@ export async function getSharedDNA(token) {
 }
 
 // ── User ──
+export async function getSettings() {
+  const res = await apiFetch("/user/settings");
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export async function updateSettings(data) {
   const res = await apiFetch("/user/settings", {
     method: "PATCH",
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to update settings");
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "Failed to update settings");
+  }
+  return res.json();
+}
+
+export async function changePassword(currentPassword, newPassword) {
+  const res = await apiFetch("/user/change-password", {
+    method: "POST",
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "Failed to change password");
+  }
   return res.json();
 }
 

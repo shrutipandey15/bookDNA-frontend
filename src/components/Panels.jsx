@@ -117,7 +117,7 @@ export function Stats({ stats }) {
         <div className="stat-card"><div className="stat-val">{stats.total_books}</div><div className="stat-label">Books Logged</div></div>
         <div className="stat-card"><div className="stat-val">{stats.avg_intensity}</div><div className="stat-label">Avg Intensity</div></div>
         <div className="stat-card"><div className="stat-val">{stats.books_per_month}</div><div className="stat-label">Books / Month</div></div>
-        <div className="stat-card"><div className="stat-val">{Math.round(stats.emotion_diversity * 100)}%</div><div className="stat-label">Emotion Diversity</div></div>
+        <div className="stat-card"><div className="stat-val">{stats.emotion_diversity}%</div><div className="stat-label">Emotion Diversity</div></div>
       </div>
       {stats.most_common_emotion && (
         <div className="stat-highlight">

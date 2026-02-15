@@ -23,10 +23,12 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   const searchTimeout = useRef(null);
   const resultsRef = useRef(null);
   const inputRef = useRef(null);
+  const justSelected = useRef(false); // prevents re-search after picking a result
 
-  // Debounced search — fires 300ms after user stops typing
+  // Debounced search — fires 500ms after user stops typing
   useEffect(() => {
-    if (entry?.id) return; // Don't search when editing existing entry
+    if (entry?.id) return;
+    if (justSelected.current) { justSelected.current = false; return; }
     if (title.length < 3) {
       setSearchResults([]);
       setShowResults(false);
@@ -63,10 +65,17 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   }, []);
 
   const selectBook = (book) => {
+    justSelected.current = true;
     setTitle(book.title);
     setAuthor(book.author || "");
     setCoverUrl(book.cover_url || "");
     setIsbn(book.isbn || "");
+    setShowResults(false);
+    setSearchResults([]);
+  };
+
+  const useCustomTitle = () => {
+    justSelected.current = true;
     setShowResults(false);
     setSearchResults([]);
   };
@@ -174,6 +183,13 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
                   </div>
                 </div>
               ))}
+              <div className="m-search-item m-search-custom" onClick={useCustomTitle}>
+                <div className="m-search-cover-placeholder">✎</div>
+                <div className="m-search-info">
+                  <div className="m-search-book-title">Use "{title}" as-is</div>
+                  <div className="m-search-book-author">Add title & author manually</div>
+                </div>
+              </div>
             </div>
           )}
         </div>
