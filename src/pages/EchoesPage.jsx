@@ -42,8 +42,8 @@ export default function EchoesPage() {
   const handleShareClick = (entry) => {
     if (activeTab === "mine") {
       setShareConfig({
-        endpoint: `/public/echo/${entry.entry_id}/og`,
-        filename: `echo-${entry.title.slice(0, 10)}.png`
+        endpoint: `/public/echo/${entry.entry_id}/story`,
+        filename: `story-${entry.title.slice(0, 10).replace(/\s+/g, '-')}.png`
       });
     }
   };

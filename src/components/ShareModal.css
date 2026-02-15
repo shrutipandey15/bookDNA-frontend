@@ -1,6 +1,13 @@
 .share-modal {
   max-width: 400px;
   text-align: center;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.share-modal::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
 }
 
 .share-preview-area {
@@ -19,6 +26,8 @@
   width: 100%;
   height: auto;
   display: block;
+  max-height: 60vh;
+  object-fit: contain; 
 }
 
 .share-loader {
