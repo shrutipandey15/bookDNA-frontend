@@ -38,32 +38,71 @@ export function Heatmap({ data }) {
   );
 }
 
-export function Echoes({ entries }) {
+export function Echoes({ entries, onShare }) {
   const echoes = entries.filter((e) => e.public_echo);
   if (!echoes.length) {
-    return <div className="empty-state"><div className="empty-glyph">✦</div><div className="empty-title">Write a Public Echo on any entry to see it here</div><div className="empty-sub">Aesthetic, spoiler-free vibes — what the world sees</div></div>;
+    return (
+      <div className="empty-state">
+        <div className="empty-glyph">✦</div>
+        <div className="empty-title">No echoes found</div>
+        <div className="empty-sub">The silence is loud.</div>
+      </div>
+    );
   }
   return (
     <div className="echoes-wrap">
       {echoes.map((entry, i) => {
-        const primary = entry.emotions?.[0]?.emotion_id;
-        const emo = EMOTIONS[primary] || { color: "#B8964E" };
+        const primary = entry.emotions?.[0] || entry.emotions?.[0]?.emotion_id;
+        const emoId = typeof primary === 'object' ? primary.emotion_id : primary;
+        
+        const emo = EMOTIONS[emoId] || { color: "#B8964E" };
+        
         return (
-          <div key={entry.id} className="echo-card" style={{ "--ec": emo.color, "--delay": `${i * 0.08}s` }}>
+          <div key={entry.entry_id || entry.id} className="echo-card" style={{ "--ec": emo.color, "--delay": `${i * 0.05}s` }}>
             <div className="echo-big-quote">"</div>
             <div className="echo-text">"{entry.public_echo}"</div>
             <div className="echo-meta">
               <div>
                 <span className="echo-title">{entry.title}</span>
                 <span className="echo-author"> — {entry.author}</span>
+                {entry.display_name && (
+                   <div className="echo-user">@{entry.username}</div>
+                )}
               </div>
-              <div className="echo-emos">
-                {entry.emotions?.slice(0, 3).map((e) => <span key={e.emotion_id}>{EMOTIONS[e.emotion_id]?.icon}</span>)}
-              </div>
+              {onShare && (
+                <button 
+                  className="echo-share-btn" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare(entry);
+                  }}
+                  title="Download Image"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                    <polyline points="16 6 12 2 8 6" />
+                    <line x1="12" y1="2" x2="12" y2="15" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         );
       })}
+      <style>{`
+        .echo-user { font-size: 0.75rem; color: #666; margin-top: 4px; }
+        .echo-share-btn {
+          background: rgba(255,255,255,0.1);
+          border: none;
+          color: white;
+          width: 32px; height: 32px;
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .echo-share-btn:hover { background: rgba(255,255,255,0.2); }
+      `}</style>
     </div>
   );
 }

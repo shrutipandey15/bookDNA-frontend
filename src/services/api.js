@@ -29,6 +29,11 @@ async function apiFetch(path, opts = {}) {
     headers["Authorization"] = `Bearer ${tokens.access_token}`;
   }
 
+  // Handle blob responses (don't set Content-Type if body is FormData, etc.)
+  if (opts.body instanceof FormData) {
+    delete headers["Content-Type"];
+  }
+
   const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
 
   // Auto-refresh on 401
@@ -189,4 +194,25 @@ export async function searchBooks(query) {
   if (!res.ok) return [];
   const data = await res.json();
   return data.results || [];
+}
+
+// ── NEW: Public Stream & Echoes ──
+export async function getPublicStream() {
+  const res = await apiFetch("/public/stream");
+  if (!res.ok) return { echoes: [], total: 0 };
+  return res.json();
+}
+
+export async function getPublicEchoes(username) {
+  const res = await apiFetch(`/public/echoes/${username}`);
+  if (!res.ok) return { echoes: [], total: 0 };
+  return res.json();
+}
+
+// ── NEW: Blob Fetcher (For Images) ──
+export async function fetchBlob(endpoint) {
+  // Use apiFetch to handle auth headers automatically
+  const res = await apiFetch(endpoint);
+  if (!res.ok) throw new Error("Failed to fetch image");
+  return res.blob();
 }

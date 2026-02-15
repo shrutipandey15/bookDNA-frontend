@@ -1,0 +1,39 @@
+.share-modal {
+  max-width: 400px;
+  text-align: center;
+}
+
+.share-preview-area {
+  margin: 20px 0;
+  min-height: 200px;
+  background: #111114;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.share-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.share-loader {
+  color: #888;
+  font-size: 0.9rem;
+  animation: pulse 1.5s infinite;
+}
+
+.share-error {
+  color: #ff6b6b;
+  font-size: 0.9rem;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}

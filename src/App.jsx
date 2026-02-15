@@ -1,27 +1,19 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Routes, Route, useParams, Link } from "react-router-dom";
+import { Routes, Route, useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import { useJournal } from "./hooks/useJournal";
-import { saveCardAsImage, shareLink } from "./utils/cardUtils";
+import { saveCardAsImage } from "./utils/cardUtils";
 import { getSharedDNA } from "./services/api";
 import AuthPage from "./pages/AuthPage";
 import BookCard from "./components/BookCard";
 import EntryModal from "./components/EntryModal";
 import DNACard from "./components/DNACard";
-import { Heatmap, Echoes, Stats } from "./components/Panels";
+import EchoesPage from "./pages/EchoesPage";
+import { Heatmap, Stats } from "./components/Panels";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { EMOTIONS, EMO_LIST } from "./services/emotions";
+import { EMO_LIST } from "./services/emotions";
 import { clearCache } from "./services/offline";
 import "./App.css";
-
-function TabLoader({ label }) {
-  return (
-    <div className="tab-loader">
-      <div className="tab-loader-spinner">◈</div>
-      <div className="tab-loader-text">{label || "Loading..."}</div>
-    </div>
-  );
-}
 
 function SharedProfile() {
   const { token } = useParams();
@@ -60,19 +52,22 @@ function SharedProfile() {
       </header>
       <main className="main" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
          <div className="dna-reveal-label" style={{ marginTop: 0 }}>Reading Personality</div>
-         <DNACard profile={profile} username={profile.username || "Reader"} />
+         {/* Read-Only Mode for Shared Profile */}
+         <DNACard profile={profile} username={profile.username || "Reader"} allowShare={false} />
       </main>
     </div>
   );
 }
 
 function Dashboard() {
-  const { authed, user, logout } = useAuth();
+  const { user, logout } = useAuth();
   const { 
-    entries, dnaProfile, heatmap, stats, shareToken,
-    loading, generating, refreshing,
-    addEntry, editEntry, removeEntry, generate, createToken 
-  } = useJournal(authed);
+    entries, dnaProfile, heatmap, stats,
+    loading, generating,
+    addEntry, editEntry, removeEntry, generate 
+  } = useJournal(true);
+
+  const navigate = useNavigate();
 
   const [tab, setTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -121,33 +116,15 @@ function Dashboard() {
     catch { showToast("Couldn't save card — try a screenshot instead."); }
   };
 
-  const handleShareDNA = async () => {
-    let tokenToShare = shareToken;
-    const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
-
-    if (!tokenToShare) {
-      try {
-        tokenToShare = await createToken();
-      } catch (err) {
-        showToast("Failed to generate link");
-        return;
-      }
-    }
-
-    const shareUrl = `${baseUrl}/s/${tokenToShare}`;
-    const success = await shareLink("My Book DNA", shareUrl);
-    if (success) showToast("Secure link copied", "success");
-  };
-
   const handleLogout = () => { logout(); clearCache(); };
 
   if (loading) return <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Loading library...</div></div>;
 
   const canGenerate = entries.length >= 3;
+  
   const TABS = [
     { id: "shelf", label: "Shelf", count: entries.length },
     { id: "heatmap", label: "Heatmap" },
-    { id: "echoes", label: "Echoes", count: entries.filter(e => e.public_echo).length },
     { id: "stats", label: "Stats" },
     { id: "dna", label: "DNA" },
   ];
@@ -172,6 +149,7 @@ function Dashboard() {
               {t.label}{t.count !== undefined && <span className="tab-count">{t.count}</span>}
             </div>
           ))}
+          <div className="nav-tab" onClick={() => navigate("/echoes")}>Echoes</div>
         </nav>
       </header>
 
@@ -217,7 +195,6 @@ function Dashboard() {
         )}
 
         {tab === "heatmap" && <Heatmap data={heatmap} />}
-        {tab === "echoes" && <Echoes entries={entries} />}
         {tab === "stats" && <Stats stats={stats} />}
 
         {tab === "dna" && (
@@ -226,12 +203,13 @@ function Dashboard() {
               {dnaProfile?.personality ? (
                 <>
                   <div className="dna-reveal-label">Your Reading Personality</div>
-                  <DNACard ref={dnaCardRef} profile={dnaProfile} username={user?.username} />
-                  <div className="dna-actions">
-                    <button className="dna-action-btn" style={{ "--ab": "#C4553A" }} onClick={handleSaveCard}>📸 Save Card</button>
-                    <button className="dna-action-btn" style={{ "--ab": "#6B3A5D" }} onClick={handleShareDNA}>✦ Share Secure Link</button>
-                  </div>
-                  {shareToken && <div style={{textAlign:'center', marginTop:'10px', opacity: 0.5, fontSize: '0.8rem'}}>Link active: .../s/{shareToken.slice(0,6)}...</div>}
+                  <DNACard 
+                    ref={dnaCardRef} 
+                    profile={dnaProfile} 
+                    username={user?.username} 
+                    allowShare={true} 
+                    onSave={handleSaveCard}
+                  />
                 </>
               ) : (
                 <div className="empty-state">
@@ -258,6 +236,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/s/:token" element={<SharedProfile />} />
+      <Route path="/echoes" element={authed ? <EchoesPage /> : <AuthPage />} />
       <Route path="/" element={authed ? <Dashboard /> : <AuthPage />} />
     </Routes>
   );
