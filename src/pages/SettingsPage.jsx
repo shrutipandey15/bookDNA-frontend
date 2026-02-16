@@ -155,6 +155,15 @@ export default function SettingsPage() {
             Log Out
           </button>
         </section>
+
+        {user?.is_admin && (
+          <section className="settings-section">
+            <div className="section-label">Admin</div>
+            <button className="settings-btn" onClick={() => navigate("/admin")}>
+              Open Admin Dashboard
+            </button>
+          </section>
+        )}
       </div>
 
       {toast && (

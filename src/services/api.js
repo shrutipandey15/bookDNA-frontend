@@ -22,7 +22,7 @@ export function isAuthed() {
 }
 
 // ── Core fetch wrapper with auto-refresh ──
-async function apiFetch(path, opts = {}) {
+export async function apiFetch(path, opts = {}) {
   const tokens = getTokens();
   const headers = { "Content-Type": "application/json", ...opts.headers };
   if (tokens?.access_token) {

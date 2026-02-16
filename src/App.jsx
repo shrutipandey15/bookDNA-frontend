@@ -10,6 +10,7 @@ import EntryModal from "./components/EntryModal";
 import DNACard from "./components/DNACard";
 import EchoesPage from "./pages/EchoesPage";
 import SettingsPage from "./pages/SettingsPage";
+import AdminPage from "./pages/AdminPage";
 import { Heatmap, Stats } from "./components/Panels";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { EMO_LIST } from "./services/emotions";
@@ -239,6 +240,7 @@ export default function App() {
       <Route path="/s/:token" element={<SharedProfile />} />
       <Route path="/echoes" element={authed ? <EchoesPage /> : <AuthPage />} />
       <Route path="/settings" element={authed ? <SettingsPage /> : <AuthPage />} />
+      <Route path="/admin" element={authed ? <AdminPage /> : <AuthPage />} />
       <Route path="/" element={authed ? <Dashboard /> : <AuthPage />} />
     </Routes>
   );
