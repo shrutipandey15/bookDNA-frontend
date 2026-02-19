@@ -11,6 +11,10 @@ export default function AdminPage() {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [dbHealth, setDbHealth] = useState(null);
+  const [catalogStats, setCatalogStats] = useState(null);
+  const [catalogBooks, setCatalogBooks] = useState([]);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogSort, setCatalogSort] = useState("popular");
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [tab, setTab] = useState("dashboard");
@@ -42,6 +46,28 @@ export default function AdminPage() {
   const loadDbHealth = async () => {
     const res = await apiFetch("/admin/db-health");
     if (res.ok) setDbHealth(await res.json());
+  };
+
+  const loadCatalog = async (search = catalogSearch, sort = catalogSort) => {
+    const params = new URLSearchParams({ sort, limit: "50" });
+    if (search) params.set("q", search);
+    const [statsRes, booksRes] = await Promise.all([
+      apiFetch("/admin/catalog/stats"),
+      apiFetch(`/admin/catalog/books?${params}`),
+    ]);
+    if (statsRes.ok) setCatalogStats(await statsRes.json());
+    if (booksRes.ok) setCatalogBooks(await booksRes.json());
+  };
+
+  const deleteCatalogBook = async (bookId, title) => {
+    if (!confirm(`Remove "${title}" from the catalog?`)) return;
+    const res = await apiFetch(`/admin/catalog/books/${bookId}`, { method: "DELETE" });
+    if (res.ok) {
+      showToast(`"${title}" removed from catalog`);
+      loadCatalog();
+    } else {
+      showToast("Delete failed", "error");
+    }
   };
 
   const cleanupTokens = async () => {
@@ -80,11 +106,15 @@ export default function AdminPage() {
         <button className="admin-back" onClick={() => navigate("/")}>←</button>
         <h1 className="admin-title">Admin</h1>
         <div className="admin-tabs">
-          {["dashboard", "users", "database"].map((t) => (
+          {["dashboard", "users", "catalog", "database"].map((t) => (
             <button
               key={t}
               className={`admin-tab ${tab === t ? "active" : ""}`}
-              onClick={() => { setTab(t); if (t === "database") loadDbHealth(); }}
+              onClick={() => {
+                setTab(t);
+                if (t === "database") loadDbHealth();
+                if (t === "catalog") loadCatalog();
+              }}
             >
               {t}
             </button>
@@ -92,6 +122,7 @@ export default function AdminPage() {
         </div>
       </header>
 
+      {/* ── Dashboard ── */}
       {tab === "dashboard" && stats && (
         <div className="admin-section">
           <div className="admin-grid">
@@ -99,8 +130,8 @@ export default function AdminPage() {
             <Stat label="Books Logged" value={stats.total_entries} />
             <Stat label="Echoes" value={stats.total_echoes} />
             <Stat label="DNA Generated" value={stats.total_dna_generated} />
+            <Stat label="Catalog Books" value={stats.catalog_books} />
             <Stat label="New Users (7d)" value={stats.users_last_7d} />
-            <Stat label="New Entries (7d)" value={stats.entries_last_7d} />
             <Stat label="DB Size" value={`${stats.db_size_mb} MB`} />
             <Stat label="Expired Tokens" value={stats.expired_refresh_tokens} />
           </div>
@@ -112,6 +143,7 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── Users List ── */}
       {tab === "users" && !selectedUser && (
         <div className="admin-section">
           <div className="admin-table-wrap">
@@ -184,6 +216,88 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── Book Catalog ── */}
+      {tab === "catalog" && (
+        <div className="admin-section">
+          {catalogStats && (
+            <div className="admin-grid">
+              <Stat label="Total Books" value={catalogStats.total_books} />
+              <Stat label="With Covers" value={catalogStats.with_covers} />
+              <Stat label="With ISBN" value={catalogStats.with_isbn} />
+              <Stat label="Avg Popularity" value={catalogStats.avg_popularity} />
+            </div>
+          )}
+
+          {catalogStats?.top_sources && (
+            <div className="admin-source-tags">
+              {Object.entries(catalogStats.top_sources).map(([src, count]) => (
+                <span key={src} className="admin-source-tag">{src}: {count}</span>
+              ))}
+            </div>
+          )}
+
+          <div className="admin-catalog-controls">
+            <input
+              type="text"
+              placeholder="Search catalog..."
+              value={catalogSearch}
+              onChange={(e) => setCatalogSearch(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && loadCatalog(catalogSearch, catalogSort)}
+              className="admin-catalog-search"
+            />
+            <select
+              value={catalogSort}
+              onChange={(e) => { setCatalogSort(e.target.value); loadCatalog(catalogSearch, e.target.value); }}
+              className="admin-catalog-sort"
+            >
+              <option value="popular">Most Popular</option>
+              <option value="recent">Recently Added</option>
+              <option value="title">A-Z Title</option>
+            </select>
+          </div>
+
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Book</th>
+                  <th>ISBN</th>
+                  <th>Source</th>
+                  <th>Pop.</th>
+                  <th>Cover</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {catalogBooks.map((b) => (
+                  <tr key={b.id}>
+                    <td>
+                      <div className="admin-username">{b.title}</div>
+                      <div className="admin-email">{b.author || "Unknown"}{b.published_year ? ` · ${b.published_year}` : ""}</div>
+                    </td>
+                    <td className="admin-mono">{b.isbn_13 || b.isbn_10 || "—"}</td>
+                    <td><span className={`admin-source-dot ${b.source}`}>{b.source}</span></td>
+                    <td>{b.popularity}</td>
+                    <td>{b.cover_url ? "✓" : "—"}</td>
+                    <td>
+                      <button
+                        className="admin-delete-sm"
+                        onClick={() => deleteCatalogBook(b.id, b.title)}
+                        title="Remove from catalog"
+                      >×</button>
+                    </td>
+                  </tr>
+                ))}
+                {catalogBooks.length === 0 && (
+                  <tr><td colSpan={6} className="admin-empty">No books in catalog yet. Search for books to populate it.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Database ── */}
       {tab === "database" && (
         <div className="admin-section">
           {dbHealth ? (

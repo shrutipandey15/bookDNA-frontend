@@ -2,37 +2,15 @@ import { useState } from "react";
 import { EMOTIONS, getPrimaryEmotion } from "../services/emotions";
 import "./BookCard.css";
 
-function openLibraryCover(entry) {
-  if (entry.isbn) return `https://covers.openlibrary.org/b/isbn/${entry.isbn}-M.jpg?default=false`;
-  if (entry.title) return `https://covers.openlibrary.org/b/title/${encodeURIComponent(entry.title)}-M.jpg?default=false`;
-  return null;
-}
-
 export default function BookCard({ entry, index, onClick }) {
-  const coverSources = [
-    entry.cover_url,
-    openLibraryCover(entry),
-  ].filter(Boolean);
-
-  const [coverIndex, setCoverIndex] = useState(0);
   const [coverLoaded, setCoverLoaded] = useState(false);
-  const [allFailed, setAllFailed] = useState(coverSources.length === 0);
+  const [coverFailed, setCoverFailed] = useState(!entry.cover_url);
   const emo = getPrimaryEmotion(entry);
-
-  const handleCoverError = () => {
-    const next = coverIndex + 1;
-    if (next < coverSources.length) {
-      setCoverIndex(next);
-      setCoverLoaded(false);
-    } else {
-      setAllFailed(true);
-    }
-  };
 
   const handleImageLoad = (e) => {
     const img = e.target;
     if (img.naturalWidth < 10 || img.naturalHeight < 10) {
-      handleCoverError();
+      setCoverFailed(true);
       return;
     }
     setCoverLoaded(true);
@@ -47,16 +25,16 @@ export default function BookCard({ entry, index, onClick }) {
       <div className="book-cover-wrap">
         <div className="book-spine" style={{ background: emo.color }} />
         <div className="book-cover">
-          {!allFailed && (
+          {!coverFailed && (
             <img
-              src={coverSources[coverIndex]}
+              src={entry.cover_url}
               alt=""
               onLoad={handleImageLoad}
-              onError={handleCoverError}
+              onError={() => setCoverFailed(true)}
               className={`cover-img ${coverLoaded ? "loaded" : ""}`}
             />
           )}
-          {(!coverLoaded || allFailed) && (
+          {(!coverLoaded || coverFailed) && (
             <div
               className="cover-fallback"
               style={{ background: `linear-gradient(145deg, ${emo.color}33, #0c0c10)` }}

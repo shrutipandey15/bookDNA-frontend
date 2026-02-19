@@ -1,118 +1,136 @@
-# Book DNA Frontend
+# 📖 Book DNA — Frontend
 
-React + Vite frontend for the Book DNA app.
+**The interface where readers confess what books did to them.**
 
-It lets authenticated users log books with emotions, view analytics from the API, and generate/share a “reading personality” card.
+This is the React frontend for [Book DNA](https://bookdna.fdev31.space). It's where emotions meet bookshelves — a dark, moody UI built for people who feel things when they read and want proof of it.
 
-## Current Scope
+🔗 **Live:** [bookdna.fdev31.space](https://bookdna.fdev31.space)  
+⚙️ **Backend repo:** [bookDNA](https://github.com/shrutipandey15/bookDNA)
 
-Implemented in this repo today:
+---
 
-- Email/password auth UI (sign in + register)
-- Shelf view with add/edit/delete entries
-- Book search autocomplete in the entry modal (`/books/search`)
-- Emotion tagging and 1-10 intensity scoring per entry
-- Shelf filters (by emotion) and sorting (newest, intensity, title)
-- Analytics tabs:
-  - Heatmap (`emotion x book` matrix)
-  - Echoes (entries with `public_echo`)
-  - Stats summary
-- DNA generation flow (`/dna/generate`) and DNA card display
-- DNA card export as PNG via `html2canvas`
-- Native share/clipboard fallback for share text + URL
-- Optimistic UI updates for create/update/delete with rollback on failure
-- Local cache of entries in `localStorage`
+## What You Can Do
 
-## Known Limitations
+**Build your emotional shelf.** Search for books (fuzzy-matched across Google Books, Open Library, and a self-growing local catalog), tag them with up to 24 emotions, score intensity 1–10, and write public echoes — one-line emotional verdicts visible to other readers.
 
-- “Offline” support is read-cache only (`bookdna_entries` in `localStorage`); there is no offline write queue/sync yet.
-- Share URLs are built as `/u/:username`, but this frontend does not define a route for public profile pages.
-- No test suite or lint script is configured in `package.json`.
-- Some API helpers are present but not currently used by UI tabs (`getDNAHistory`, `updateSettings`).
-- DNA card subtitle year is currently hardcoded to `2026` in `src/components/DNACard.jsx`.
+**Discover your reader DNA.** After 3+ books, generate your personality profile. The engine analyzes your emotion patterns — what you gravitate toward, what you avoid, what co-occurs — and assigns one of 8 archetypes. Export it as a shareable PNG card.
+
+**See your patterns.** Emotion heatmap across your shelf. Stats breakdown. Personality history over time. Monthly recaps. The data is yours.
+
+**Admin it.** If you're running an instance — dashboard with user stats, a browsable book catalog, database health, and token cleanup.
+
+---
 
 ## Stack
 
-- React 18
-- React Router 6 (app currently runs as one main screen with tab state)
-- Vite 5
-- Vanilla CSS
-- `html2canvas` for PNG export
+| What | How |
+|------|-----|
+| Framework | React 18 + React Router 6 |
+| Build | Vite 5 |
+| Styling | Vanilla CSS with custom properties |
+| Export | html2canvas for DNA card PNG |
+| Fonts | Cormorant Garamond — because data deserves typography |
 
-## Local Development
+No component library. No Tailwind. Every pixel is intentional.
 
-Prereqs:
+---
 
-- Node.js 18+ (recommended)
-- Book DNA backend running locally
+## Pages
 
-Install and run:
+| Route | What happens |
+|-------|-------------|
+| `/` | Your shelf — books as spined cards with emotion tabs, filter/sort, analytics |
+| `/login` | Auth with password strength meter, lockout countdown, client-side validation |
+| `/admin` | Dashboard, user management, book catalog browser, DB health (admin only) |
+
+---
+
+## The Shelf
+
+Each book renders as a physical book card — spine colored by primary emotion, cover from Google Books (styled fallback if unavailable), emotion tabs on the edge, intensity bar on the side. Click to edit. Swipe to explore.
+
+Optimistic CRUD — adds, edits, and deletes happen instantly in the UI and roll back if the API disagrees.
+
+---
+
+## Search
+
+The entry modal has an autocomplete search that queries the backend's three-layer engine:
+
+```
+You type "iron flam"
+      ↓
+Local catalog (trigram fuzzy match) + Google Books + Open Library
+      ↓
+Deduplicated, scored, ranked
+      ↓
+"Iron Flame" by Rebecca Yarros — first result, with cover
+```
+
+Debounced at 600ms. Minimum 3 characters. Results show cover, author, year.
+
+---
+
+## Run Locally
 
 ```bash
 npm install
-npm run dev
+npm run dev     # → localhost:3000
 ```
 
-App runs at `http://localhost:3000`.
+Vite proxies `/api` to `localhost:8000`. Make sure the [backend](https://github.com/shrutipandey15/bookDNA) is running.
 
-### API Base URL
-
-`src/services/api.js` uses:
-
-```js
-const API_BASE = import.meta.env.VITE_API_URL || "/api";
-```
-
-In dev, Vite proxies `/api` to `http://127.0.0.1:8000` (`vite.config.js`).
-
-For deployed frontend, set `VITE_API_URL` to your backend API base.
-
-## Build
+### Build & Deploy
 
 ```bash
-npm run build
-npm run preview
+npm run build   # → dist/
 ```
 
-## Backend Endpoints Expected
+Set `VITE_API_URL=/api` in `.env.production`. Copy `dist/` to your web server.
 
-From `src/services/api.js`, this frontend expects these endpoints:
+---
 
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/refresh`
-- `GET /auth/me`
-- `GET /entries`
-- `POST /entries`
-- `PUT /entries/:id`
-- `DELETE /entries/:id`
-- `GET /dna/profile`
-- `POST /dna/generate`
-- `GET /dna/heatmap`
-- `GET /dna/stats`
-- `GET /dna/history` (helper exists)
-- `PATCH /user/settings` (helper exists)
-- `GET /books/search?q=...`
+## Project Structure
 
-## Storage Keys
-
-- `bookdna_tokens`: auth tokens
-- `bookdna_entries`: cached shelf entries
-
-## Project Layout
-
-```text
+```
 src/
-  App.jsx                  Main app shell and tab logic
-  contexts/AuthContext.jsx Auth state + login/register/logout wiring
-  services/api.js          API calls + token refresh logic
-  services/offline.js      Entry cache helpers
-  services/emotions.js     Emotion dictionary (labels/colors/icons)
-  components/              UI building blocks (cards, modal, panels, boundary)
-  pages/AuthPage.jsx       Auth screen
-  styles/global.css        Theme variables + base styles
+├── App.jsx                    Shelf, tabs, main shell
+├── contexts/
+│   └── AuthContext.jsx        Login/register/logout state
+├── services/
+│   ├── api.js                 apiFetch + token refresh
+│   ├── offline.js             localStorage entry cache
+│   └── emotions.js            24 emotions: labels, colors, icons
+├── components/
+│   ├── BookCard.jsx           Spined book card with emotion tabs
+│   ├── EntryModal.jsx         Add/edit with search autocomplete
+│   ├── DNACard.jsx            Personality card + PNG export
+│   ├── ShareModal.jsx         Native share / clipboard fallback
+│   ├── HeatmapPanel.jsx       Emotion × book matrix
+│   ├── EchoesPanel.jsx        Public emotional verdicts
+│   ├── StatsPanel.jsx         Reading statistics
+│   └── ErrorBoundary.jsx      Graceful crash handling
+├── pages/
+│   ├── AuthPage.jsx           Login/register + password strength
+│   └── AdminPage.jsx          Dashboard, users, catalog, DB health
+└── styles/
+    └── global.css             Theme variables, dark palette
 ```
+
+---
+
+## What's Next
+
+See [ROADMAP.md](./ROADMAP.md) — public profiles, Goodreads import, reading status tracking, DNA comparison, and eventually a community where readers find each other through what they feel.
+
+---
 
 ## License
 
-Private repository.
+MIT
+
+---
+
+*Every book you've ever loved changed you in ways you can't articulate.*
+
+*This tries.*

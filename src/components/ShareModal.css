@@ -46,3 +46,58 @@
   50% { opacity: 1; }
   100% { opacity: 0.6; }
 }
+
+.share-link-row {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 16px;
+}
+.share-link-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #aaa;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  outline: none;
+  min-width: 0;
+}
+.share-link-input:focus {
+  border-color: rgba(184,150,78,0.3);
+}
+.share-link-copy {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(184,150,78,0.12);
+  border: 1px solid rgba(184,150,78,0.25);
+  color: #B8964E;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.share-link-copy:hover {
+  background: rgba(184,150,78,0.2);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+}
+.action-btn.secondary {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #e0ddd8;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  flex: 1;
+  transition: all 0.2s;
+}
+.action-btn.secondary:hover {
+  background: rgba(255,255,255,0.08);
+}

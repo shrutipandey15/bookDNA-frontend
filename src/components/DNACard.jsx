@@ -31,7 +31,7 @@ const DNACard = forwardRef(function DNACard({ profile, username, allowShare = fa
         <div className="dna-header">
           <div>
             <div className="dna-label">BOOK DNA™</div>
-            <div className="dna-sub">{profile.book_count} books · 2026</div>
+            <div className="dna-sub">{profile.book_count} books · {new Date().getFullYear()}</div>
           </div>
           <div className="dna-glyph">{p.glyph}</div>
         </div>
@@ -107,6 +107,7 @@ const DNACard = forwardRef(function DNACard({ profile, username, allowShare = fa
         onClose={() => setShowShare(false)}
         endpoint={shareToken ? `/public/shared/${shareToken}/og` : null}
         filename={`dna-${username}.png`}
+        shareToken={shareToken}
       />
     </div>
   );

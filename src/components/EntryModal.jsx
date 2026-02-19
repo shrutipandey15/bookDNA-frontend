@@ -24,10 +24,11 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   const resultsRef = useRef(null);
   const inputRef = useRef(null);
   const justSelected = useRef(false); // prevents re-search after picking a result
+  const isEditing = useRef(!!entry?.id); // stable — set once on mount, never changes
 
-  // Debounced search — fires 500ms after user stops typing
+  // Debounced search — only for new entries, never when editing
   useEffect(() => {
-    if (entry?.id) return;
+    if (isEditing.current) return;
     if (justSelected.current) { justSelected.current = false; return; }
     if (title.length < 3) {
       setSearchResults([]);
@@ -39,7 +40,7 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
     clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(async () => {
       try {
-        const results = await searchBooks(title);
+        const results = await searchBooks(title.trim());
         setSearchResults(results.slice(0, 5));
         setShowResults(results.length > 0);
         setSelectedIndex(-1);
@@ -47,10 +48,10 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
         setSearchResults([]);
       }
       setSearching(false);
-    }, 500);
+    }, 600);
 
     return () => clearTimeout(searchTimeout.current);
-  }, [title, entry?.id]);
+  }, [title]);
 
   // Close results on click outside
   useEffect(() => {
