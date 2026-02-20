@@ -15,9 +15,14 @@ export default function AdminPage() {
   const [catalogBooks, setCatalogBooks] = useState([]);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogSort, setCatalogSort] = useState("popular");
+  const [catalogPage, setCatalogPage] = useState(0);
+  const [catalogHasMore, setCatalogHasMore] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [tab, setTab] = useState("dashboard");
+
+  const CATALOG_PAGE_SIZE = 50;
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -48,15 +53,24 @@ export default function AdminPage() {
     if (res.ok) setDbHealth(await res.json());
   };
 
-  const loadCatalog = async (search = catalogSearch, sort = catalogSort) => {
-    const params = new URLSearchParams({ sort, limit: "50" });
+  const loadCatalog = async (search = catalogSearch, sort = catalogSort, page = 0) => {
+    const params = new URLSearchParams({
+      sort,
+      limit: String(CATALOG_PAGE_SIZE),
+      offset: String(page * CATALOG_PAGE_SIZE),
+    });
     if (search) params.set("q", search);
     const [statsRes, booksRes] = await Promise.all([
       apiFetch("/admin/catalog/stats"),
       apiFetch(`/admin/catalog/books?${params}`),
     ]);
     if (statsRes.ok) setCatalogStats(await statsRes.json());
-    if (booksRes.ok) setCatalogBooks(await booksRes.json());
+    if (booksRes.ok) {
+      const books = await booksRes.json();
+      setCatalogBooks(books);
+      setCatalogHasMore(books.length === CATALOG_PAGE_SIZE);
+      setCatalogPage(page);
+    }
   };
 
   const deleteCatalogBook = async (bookId, title) => {
@@ -68,6 +82,11 @@ export default function AdminPage() {
     } else {
       showToast("Delete failed", "error");
     }
+  };
+
+  const loadAuditLog = async () => {
+    const res = await apiFetch("/admin/audit-log?limit=50");
+    if (res.ok) setAuditLogs(await res.json());
   };
 
   const cleanupTokens = async () => {
@@ -106,7 +125,7 @@ export default function AdminPage() {
         <button className="admin-back" onClick={() => navigate("/")}>←</button>
         <h1 className="admin-title">Admin</h1>
         <div className="admin-tabs">
-          {["dashboard", "users", "catalog", "database"].map((t) => (
+          {["dashboard", "users", "catalog", "audit", "database"].map((t) => (
             <button
               key={t}
               className={`admin-tab ${tab === t ? "active" : ""}`}
@@ -114,6 +133,7 @@ export default function AdminPage() {
                 setTab(t);
                 if (t === "database") loadDbHealth();
                 if (t === "catalog") loadCatalog();
+                if (t === "audit") loadAuditLog();
               }}
             >
               {t}
@@ -122,7 +142,6 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* ── Dashboard ── */}
       {tab === "dashboard" && stats && (
         <div className="admin-section">
           <div className="admin-grid">
@@ -242,12 +261,12 @@ export default function AdminPage() {
               placeholder="Search catalog..."
               value={catalogSearch}
               onChange={(e) => setCatalogSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && loadCatalog(catalogSearch, catalogSort)}
+              onKeyDown={(e) => e.key === "Enter" && loadCatalog(catalogSearch, catalogSort, 0)}
               className="admin-catalog-search"
             />
             <select
               value={catalogSort}
-              onChange={(e) => { setCatalogSort(e.target.value); loadCatalog(catalogSearch, e.target.value); }}
+              onChange={(e) => { setCatalogSort(e.target.value); loadCatalog(catalogSearch, e.target.value, 0); }}
               className="admin-catalog-sort"
             >
               <option value="popular">Most Popular</option>
@@ -290,6 +309,53 @@ export default function AdminPage() {
                 ))}
                 {catalogBooks.length === 0 && (
                   <tr><td colSpan={6} className="admin-empty">No books in catalog yet. Search for books to populate it.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {(catalogPage > 0 || catalogHasMore) && (
+            <div className="admin-pagination">
+              <button
+                className="admin-page-btn"
+                disabled={catalogPage === 0}
+                onClick={() => loadCatalog(catalogSearch, catalogSort, catalogPage - 1)}
+              >← Prev</button>
+              <span className="admin-page-info">Page {catalogPage + 1}</span>
+              <button
+                className="admin-page-btn"
+                disabled={!catalogHasMore}
+                onClick={() => loadCatalog(catalogSearch, catalogSort, catalogPage + 1)}
+              >Next →</button>
+            </div>
+          )}
+        </div>
+      )}
+      {tab === "audit" && (
+        <div className="admin-section">
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Admin</th>
+                  <th>Action</th>
+                  <th>Target</th>
+                  <th>Detail</th>
+                  <th>When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {auditLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td><span className="admin-badge">{log.admin_username}</span></td>
+                    <td><span className="admin-mono">{log.action}</span></td>
+                    <td><span className="admin-mono">{log.target_type}{log.target_id ? `:${log.target_id.slice(0,8)}` : ""}</span></td>
+                    <td className="admin-audit-detail">{log.detail || "—"}</td>
+                    <td className="admin-mono">{new Date(log.created_at).toLocaleString()}</td>
+                  </tr>
+                ))}
+                {auditLogs.length === 0 && (
+                  <tr><td colSpan={5} className="admin-empty">No admin actions logged yet.</td></tr>
                 )}
               </tbody>
             </table>

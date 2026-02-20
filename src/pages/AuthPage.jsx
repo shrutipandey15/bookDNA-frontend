@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import "./AuthPage.css";
 
@@ -176,6 +177,10 @@ export default function AuthPage() {
           <button type="submit" className="auth-submit" disabled={isDisabled}>
             {loading ? "..." : cooldown > 0 ? "Locked" : mode === "login" ? "Enter" : "Start Your DNA"}
           </button>
+
+          {mode === "login" && (
+            <Link to="/reset-password" className="auth-forgot">Forgot password?</Link>
+          )}
         </form>
       </div>
     </div>

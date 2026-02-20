@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /settings
+Disallow: /api/
+
+Sitemap: https://bookdna.fdev31.space/sitemap.xml

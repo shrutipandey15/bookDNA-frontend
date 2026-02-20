@@ -121,10 +121,19 @@
   font-size: 10px; font-family: var(--font-mono, monospace);
   letter-spacing: 1px; text-transform: uppercase; white-space: nowrap;
 }
-
 .auth-cooldown {
   text-align: center; font-size: 12px; color: #C4553A;
   font-family: var(--font-mono, monospace);
   padding: 8px; background: rgba(196,85,58,0.08);
   border-radius: 8px; border: 1px solid rgba(196,85,58,0.15);
 }
+.auth-forgot {
+  display: block;
+  text-align: center;
+  margin-top: 8px;
+  color: #666;
+  font-size: 12px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.auth-forgot:hover { color: #B8964E; }
