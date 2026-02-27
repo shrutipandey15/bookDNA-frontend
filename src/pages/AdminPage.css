@@ -297,3 +297,19 @@
   color: #888;
   font-family: var(--font-mono, monospace);
 }
+@media (max-width: 600px) {
+  .admin-page { padding: 16px; }
+  /* Stack tabs into wrapping rows */
+  .admin-tabs { flex-wrap: wrap; gap: 6px; }
+  .admin-tab { font-size: 11px; padding: 6px 10px; }
+  /* Stack user detail grid to single column */
+  .admin-detail-grid { grid-template-columns: 1fr; }
+  /* Stack entry rows */
+  .admin-entry-row { flex-wrap: wrap; gap: 6px; }
+  .admin-entry-title { width: 100%; }
+  /* Catalog controls stack */
+  .admin-catalog-controls { flex-direction: column; }
+  /* Ensure table cells don't get too cramped */
+  .admin-table td, .admin-table th { padding: 8px 8px; font-size: 12px; }
+  .admin-audit-detail { max-width: 120px; }
+}

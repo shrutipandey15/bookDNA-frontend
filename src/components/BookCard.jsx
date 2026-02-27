@@ -41,7 +41,7 @@ export default function BookCard({ entry, index, onClick }) {
             >
               <div className="fb-title">{entry.title}</div>
               <div className="fb-author">{entry.author}</div>
-              <div className="fb-glyph">{emo.icon}</div>
+              <div className="fb-glyph"><emo.Icon size={24} color={emo.color} /></div>
             </div>
           )}
           <div className="emo-tabs">
@@ -73,11 +73,15 @@ export default function BookCard({ entry, index, onClick }) {
         <div className="bm-title">{entry.title}</div>
         <div className="bm-author">{entry.author}</div>
         <div className="bm-pills">
-          {entry.emotions?.slice(0, 4).map((e) => (
-            <span key={e.emotion_id} className="bm-pill">
-              {EMOTIONS[e.emotion_id]?.icon}
-            </span>
-          ))}
+          {entry.emotions?.slice(0, 4).map((e) => {
+            const em = EMOTIONS[e.emotion_id];
+            if (!em) return null;
+            return (
+              <span key={e.emotion_id} className="bm-pill">
+                <em.Icon size={11} color={em.color} />
+              </span>
+            );
+          })}
           <span className="bm-int">{entry.intensity}/10</span>
         </div>
       </div>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Routes, Route, useParams, Link, useNavigate } from "react-router-dom";
+import { Settings } from "lucide-react";
+import { Routes, Route, useParams, Link, useNavigate, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
-import { useJournal } from "./hooks/useJournal";
+import { useJournal, JournalProvider } from "./contexts/JournalContext";
 import { saveCardAsImage } from "./utils/cardUtils";
 import { getSharedDNA } from "./services/api";
 import AuthPage from "./pages/AuthPage";
@@ -66,11 +67,11 @@ function SharedProfile() {
 
 function Dashboard() {
   const { user, logout } = useAuth();
-  const { 
-    entries, dnaProfile, heatmap, stats,
+  const {
+    entries, analytics, stale,
     loading, generating,
-    addEntry, editEntry, removeEntry, generate 
-  } = useJournal(true);
+    addEntry, editEntry, removeEntry, generate, ensureFresh
+  } = useJournal();
 
   const navigate = useNavigate();
 
@@ -78,12 +79,19 @@ function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     return params.get("view") === "dna" ? "dna" : "shelf";
   });
-  
+
   const [modal, setModal] = useState(null);
   const [filterEmotion, setFilterEmotion] = useState(null);
   const [sortBy, setSortBy] = useState("date");
   const [toast, setToast] = useState(null);
   const dnaCardRef = useRef(null);
+
+  // Fetch analytics for the active tab, but only when stale or missing
+  useEffect(() => {
+    if (tab === "heatmap") ensureFresh("heatmap");
+    if (tab === "stats") ensureFresh("stats");
+    if (tab === "dna") ensureFresh("profile");
+  }, [tab, ensureFresh]);
 
   const showToast = (message, type = "error") => {
     setToast({ message, type });
@@ -107,17 +115,17 @@ function Dashboard() {
   };
 
   const handleDeleteEntry = async (id) => {
-    try { await removeEntry(id); setModal(null); } 
+    try { await removeEntry(id); setModal(null); }
     catch (err) { showToast("Failed to delete book"); }
   };
 
   const handleGenerateDNA = async () => {
-    try { await generate(); setTab("dna"); showToast("Your DNA has been revealed ✦", "success"); } 
+    try { await generate(); setTab("dna"); showToast("Your DNA has been revealed ✦", "success"); }
     catch (err) { showToast(err.message || "Failed to generate DNA"); }
   };
 
   const handleSaveCard = async () => {
-    try { await saveCardAsImage(dnaCardRef.current, user?.username); showToast("Card saved", "success"); } 
+    try { await saveCardAsImage(dnaCardRef.current, user?.username); showToast("Card saved", "success"); }
     catch { showToast("Couldn't save card — try a screenshot instead."); }
   };
 
@@ -126,7 +134,7 @@ function Dashboard() {
   if (loading) return <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Loading library...</div></div>;
 
   const canGenerate = entries.length >= 3;
-  
+
   const TABS = [
     { id: "shelf", label: "Shelf", count: entries.length },
     { id: "heatmap", label: "Heatmap" },
@@ -145,7 +153,7 @@ function Dashboard() {
                 {generating ? "✦ Analyzing..." : "✦ Generate DNA"}
               </button>
             )}
-            <button className="logout-btn" onClick={() => navigate("/settings")} title="Settings">⚙</button>
+            <button className="logout-btn" onClick={() => navigate("/settings")} title="Settings"><Settings size={18} /></button>
           </div>
         </div>
         <nav className="nav">
@@ -199,20 +207,29 @@ function Dashboard() {
           </ErrorBoundary>
         )}
 
-        {tab === "heatmap" && <Heatmap data={heatmap} />}
-        {tab === "stats" && <Stats stats={stats} />}
+        {tab === "heatmap" && (
+          stale.heatmap
+            ? <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Loading heatmap...</div></div>
+            : <Heatmap data={analytics.heatmap} />
+        )}
+
+        {tab === "stats" && (
+          stale.stats
+            ? <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Loading stats...</div></div>
+            : <Stats stats={analytics.stats} />
+        )}
 
         {tab === "dna" && (
           <ErrorBoundary name="DNA">
             <div className="dna-section">
-              {dnaProfile?.personality ? (
+              {analytics.profile?.personality ? (
                 <>
                   <div className="dna-reveal-label">Your Reading Personality</div>
-                  <DNACard 
-                    ref={dnaCardRef} 
-                    profile={dnaProfile} 
-                    username={user?.username} 
-                    allowShare={true} 
+                  <DNACard
+                    ref={dnaCardRef}
+                    profile={analytics.profile}
+                    username={user?.username}
+                    allowShare={true}
                     onSave={handleSaveCard}
                   />
                 </>
@@ -234,29 +251,45 @@ function Dashboard() {
   );
 }
 
-function Home() {
+// Wraps authenticated routes. JournalProvider mounts once and persists across navigation.
+function AuthedLayout() {
   const { authed } = useAuth();
-  const [showAuth, setShowAuth] = useState(false);
-
-  if (authed) return <Dashboard />;
-  if (showAuth) return <AuthPage />;
-  return <LandingPage onGetStarted={() => setShowAuth(true)} />;
+  if (!authed) return <Navigate to="/login" replace />;
+  return (
+    <JournalProvider>
+      <Outlet />
+    </JournalProvider>
+  );
 }
 
 export default function App() {
   const { authed, loading } = useAuth();
+  const navigate = useNavigate();
   if (loading) return <div className="loading-screen"><div className="loading-glyph">◈</div></div>;
-  
+
   return (
     <Routes>
+      {/* Public routes */}
       <Route path="/s/:token" element={<SharedProfile />} />
       <Route path="/u/:username" element={<PublicProfile />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/login" element={<AuthPage />} />
-      <Route path="/echoes" element={authed ? <EchoesPage /> : <AuthPage />} />
-      <Route path="/settings" element={authed ? <SettingsPage /> : <AuthPage />} />
-      <Route path="/admin" element={authed ? <AdminPage /> : <AuthPage />} />
-      <Route path="/" element={<Home />} />
+      <Route path="/login" element={authed ? <Navigate to="/" replace /> : <AuthPage />} />
+
+      {/* "/" is a layout route: AuthedLayout for authed users, LandingPage otherwise.
+          Nested routes render inside AuthedLayout's <Outlet />. */}
+      <Route
+        path="/"
+        element={
+          authed
+            ? <AuthedLayout />
+            : <LandingPage onGetStarted={() => navigate("/login")} />
+        }
+      >
+        <Route index element={<Dashboard />} />
+        <Route path="echoes" element={<EchoesPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="admin" element={<AdminPage />} />
+      </Route>
     </Routes>
   );
 }

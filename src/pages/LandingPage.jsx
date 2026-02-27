@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { BookOpen, Activity, BarChart2, Share2, X, Check } from "lucide-react";
 import "./LandingPage.css";
 
 // Personality type samples for the showcase
@@ -9,10 +10,10 @@ const PERSONALITIES = [
 ];
 
 const FEATURES = [
-  { icon: "📖", title: "Log What Books Did to You", desc: "Not ratings. Not reviews. The raw emotional truth — which feelings a book triggered, how intensely, and the one line you can't forget." },
-  { icon: "🧬", title: "Generate Your Reading DNA", desc: "Our engine maps your emotional patterns across every book into a unique personality profile. Discover who you are as a reader." },
-  { icon: "📊", title: "See Your Emotional Fingerprint", desc: "Heatmaps. Emotion frequency bars. Blind spots you never noticed. Your reading life, visualized like never before." },
-  { icon: "🔗", title: "Share Your Card", desc: "A beautiful, shareable DNA card that captures your reading personality in one glance. Post it. Prove it." },
+  { Icon: BookOpen,  title: "Log What Books Did to You",       desc: "Not ratings. Not reviews. The raw emotional truth — which feelings a book triggered, how intensely, and the one line you can't forget." },
+  { Icon: Activity,  title: "Generate Your Reading DNA",        desc: "Our engine maps your emotional patterns across every book into a unique personality profile. Discover who you are as a reader." },
+  { Icon: BarChart2, title: "See Your Emotional Fingerprint",   desc: "Heatmaps. Emotion frequency bars. Blind spots you never noticed. Your reading life, visualized like never before." },
+  { Icon: Share2,    title: "Share Your Card",                  desc: "A beautiful, shareable DNA card that captures your reading personality in one glance. Post it. Prove it." },
 ];
 
 export default function LandingPage({ onGetStarted }) {
@@ -87,7 +88,7 @@ export default function LandingPage({ onGetStarted }) {
             {FEATURES.map((f, i) => (
               <article key={i} className="landing-step">
                 <div className="landing-step-num">{String(i + 1).padStart(2, "0")}</div>
-                <div className="landing-step-icon">{f.icon}</div>
+                <div className="landing-step-icon"><f.Icon size={28} /></div>
                 <h3 className="landing-step-title">{f.title}</h3>
                 <p className="landing-step-desc">{f.desc}</p>
               </article>
@@ -120,19 +121,19 @@ export default function LandingPage({ onGetStarted }) {
           <h2 className="landing-h2">What Book DNA is <em>not</em></h2>
           <div className="landing-not-grid">
             <div className="landing-not-item">
-              <div className="landing-not-x">✗</div>
+              <div className="landing-not-x"><X size={16} /></div>
               <p>Not Goodreads. We don't do star ratings or popularity contests.</p>
             </div>
             <div className="landing-not-item">
-              <div className="landing-not-x">✗</div>
+              <div className="landing-not-x"><X size={16} /></div>
               <p>Not a book tracker. We don't count pages or set reading goals.</p>
             </div>
             <div className="landing-not-item">
-              <div className="landing-not-x">✗</div>
+              <div className="landing-not-x"><X size={16} /></div>
               <p>Not social media. No feeds, no followers, no noise.</p>
             </div>
             <div className="landing-not-item yes">
-              <div className="landing-not-check">✓</div>
+              <div className="landing-not-check"><Check size={16} /></div>
               <p>A mirror. A map of how books have shaped your inner emotional life.</p>
             </div>
           </div>

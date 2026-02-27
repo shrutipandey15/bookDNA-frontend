@@ -1,9 +1,10 @@
+import { LayoutGrid, BarChart2, Download } from "lucide-react";
 import { EMOTIONS } from "../services/emotions";
 import "./Panels.css";
 
 export function Heatmap({ data }) {
   if (!data || data.total_books < 2) {
-    return <div className="empty-state"><div className="empty-glyph">🌀</div><div className="empty-title">Add at least 2 books to see your heatmap</div></div>;
+    return <div className="empty-state"><div className="empty-glyph"><LayoutGrid size={36} /></div><div className="empty-title">Add at least 2 books to see your heatmap</div></div>;
   }
   const { books, active_emotions, cells } = data;
   const cellMap = {};
@@ -20,7 +21,7 @@ export function Heatmap({ data }) {
             const em = EMOTIONS[eid];
             if (!em) return null;
             return [
-              <div key={`l-${eid}`} className="hm-row-label"><span>{em.icon}</span> {em.label}</div>,
+              <div key={`l-${eid}`} className="hm-row-label"><span><em.Icon size={13} color={em.color} /></span> {em.label}</div>,
               ...books.map((b) => {
                 const val = cellMap[`${b.entry_id}-${eid}`];
                 return (
@@ -78,11 +79,7 @@ export function Echoes({ entries, onShare }) {
                   }}
                   title="Download Image"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                    <polyline points="16 6 12 2 8 6" />
-                    <line x1="12" y1="2" x2="12" y2="15" />
-                  </svg>
+                  <Download size={16} />
                 </button>
               )}
             </div>
@@ -109,7 +106,7 @@ export function Echoes({ entries, onShare }) {
 
 export function Stats({ stats }) {
   if (!stats || stats.total_books === 0) {
-    return <div className="empty-state"><div className="empty-glyph">📊</div><div className="empty-title">Add books to see your stats</div></div>;
+    return <div className="empty-state"><div className="empty-glyph"><BarChart2 size={36} /></div><div className="empty-title">Add books to see your stats</div></div>;
   }
   return (
     <div className="stats-wrap">
@@ -123,7 +120,7 @@ export function Stats({ stats }) {
         <div className="stat-highlight">
           Your most felt emotion:{" "}
           <span style={{ color: EMOTIONS[stats.most_common_emotion]?.color }}>
-            {EMOTIONS[stats.most_common_emotion]?.icon} {EMOTIONS[stats.most_common_emotion]?.label}
+            {(() => { const em = EMOTIONS[stats.most_common_emotion]; return em ? <em.Icon size={14} color={em.color} style={{ display: 'inline', verticalAlign: 'middle' }} /> : null; })()} {EMOTIONS[stats.most_common_emotion]?.label}
           </span>{" "}
           ({stats.most_common_emotion_count}×)
         </div>

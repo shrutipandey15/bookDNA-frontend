@@ -1,4 +1,5 @@
 import { forwardRef, useState } from "react";
+import { Camera } from "lucide-react";
 import { EMOTIONS } from "../services/emotions";
 import { generateShareToken } from "../services/api";
 import ShareModal from "./ShareModal";
@@ -44,7 +45,7 @@ const DNACard = forwardRef(function DNACard({ profile, username, allowShare = fa
           if (!em) return null;
           return (
             <div key={t.emotion_id} className="dna-bar-row" style={{ animationDelay: `${i * 0.1 + 0.3}s` }}>
-              <span className="dna-bar-icon">{em.icon}</span>
+              <span className="dna-bar-icon"><em.Icon size={14} color={em.color} /></span>
               <span className="dna-bar-label">{em.label}</span>
               <div className="dna-bar-track">
                 <div className="dna-bar-fill" style={{ width: `${(t.count / maxC) * 100}%`, background: em.color }} />
@@ -81,7 +82,7 @@ const DNACard = forwardRef(function DNACard({ profile, username, allowShare = fa
             }} 
             onClick={onSave}
           >
-            📸 Save Card
+            <Camera size={15} style={{ marginRight: 6 }} /> Save Card
           </button>
           <button 
             className="dna-action-btn" 

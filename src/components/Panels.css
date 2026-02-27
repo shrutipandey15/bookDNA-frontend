@@ -42,3 +42,11 @@
 .stat-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
 .stat-highlight { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
 .stat-highlight span { font-weight: 600; }
+
+@media (max-width: 480px) {
+  .echo-text { font-size: 15px; }
+  .stat-val { font-size: 26px; }
+  .stat-card { padding: 14px; }
+  /* Heatmap label column narrower on small screens */
+  .hm-row-label { font-size: 10px; }
+}

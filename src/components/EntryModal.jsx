@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Loader2, BookOpen, Pencil } from "lucide-react";
 import { EMO_LIST } from "../services/emotions";
 import { searchBooks } from "../services/api";
 import "./EntryModal.css";
@@ -154,7 +155,7 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
             onKeyDown={handleKeyDown}
             autoComplete="off"
           />
-          {searching && <span className="m-search-spinner">⟳</span>}
+          {searching && <Loader2 size={14} className="m-search-spinner" />}
 
           {showResults && (
             <div className="m-search-results" ref={resultsRef}>
@@ -173,7 +174,7 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
                       onError={(e) => { e.target.style.display = "none"; }}
                     />
                   ) : (
-                    <div className="m-search-cover-placeholder">📖</div>
+                    <div className="m-search-cover-placeholder"><BookOpen size={18} /></div>
                   )}
                   <div className="m-search-info">
                     <div className="m-search-book-title">{book.title}</div>
@@ -185,7 +186,7 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
                 </div>
               ))}
               <div className="m-search-item m-search-custom" onClick={useCustomTitle}>
-                <div className="m-search-cover-placeholder">✎</div>
+                <div className="m-search-cover-placeholder"><Pencil size={18} /></div>
                 <div className="m-search-info">
                   <div className="m-search-book-title">Use "{title}" as-is</div>
                   <div className="m-search-book-author">Add title & author manually</div>
@@ -233,7 +234,7 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
               style={{ "--tc": e.color }}
               onClick={() => toggleEmo(id)}
             >
-              <span>{e.icon}</span>
+              <e.Icon size={14} color={e.color} />
               <span>{e.label}</span>
             </div>
           ))}

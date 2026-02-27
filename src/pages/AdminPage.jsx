@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Check, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { apiFetch } from "../services/api";
@@ -297,7 +298,7 @@ export default function AdminPage() {
                     <td className="admin-mono">{b.isbn_13 || b.isbn_10 || "—"}</td>
                     <td><span className={`admin-source-dot ${b.source}`}>{b.source}</span></td>
                     <td>{b.popularity}</td>
-                    <td>{b.cover_url ? "✓" : "—"}</td>
+                    <td>{b.cover_url ? <Check size={14} color="#5A8B6F" /> : <span>—</span>}</td>
                     <td>
                       <button
                         className="admin-delete-sm"
@@ -369,7 +370,7 @@ export default function AdminPage() {
           {dbHealth ? (
             <>
               <div className={`admin-status-badge ${dbHealth.status === "healthy" ? "healthy" : "unhealthy"}`}>
-                {dbHealth.status === "healthy" ? "✓" : "✗"} {dbHealth.status} · {dbHealth.db_size_mb} MB
+                {dbHealth.status === "healthy" ? <Check size={14} color="#5A8B6F" /> : <X size={14} color="#C4553A" />} {dbHealth.status} · {dbHealth.db_size_mb} MB
               </div>
               {dbHealth.tables && (
                 <div className="admin-table-wrap">

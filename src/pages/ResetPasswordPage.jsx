@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CheckCircle } from "lucide-react";
 import { useSearchParams, Link } from "react-router-dom";
 import "./ResetPassword.css";
 
@@ -45,7 +46,7 @@ function ForgotForm() {
       <div className="reset-page">
         <div className="reset-card">
           <div className="reset-logo">BOOK <span>DNA</span></div>
-          <div className="reset-glyph success">✓</div>
+          <div className="reset-glyph success"><CheckCircle size={40} /></div>
           <div className="reset-title">Check your email</div>
           <div className="reset-sub">If that email is registered, you'll receive a reset link within a few minutes.</div>
           <Link to="/" className="reset-btn">Back to Login</Link>
@@ -125,7 +126,7 @@ function ResetForm({ token }) {
       <div className="reset-page">
         <div className="reset-card">
           <div className="reset-logo">BOOK <span>DNA</span></div>
-          <div className="reset-glyph success">✓</div>
+          <div className="reset-glyph success"><CheckCircle size={40} /></div>
           <div className="reset-title">Password Updated</div>
           <div className="reset-sub">You can now log in with your new password.</div>
           <Link to="/" className="reset-btn">Go to Login</Link>

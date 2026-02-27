@@ -1,4 +1,5 @@
 import { Component } from "react";
+import { AlertTriangle } from "lucide-react";
 import "./ErrorBoundary.css";
 
 export default class ErrorBoundary extends Component {
@@ -23,7 +24,7 @@ export default class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div className="eb-fallback">
-          <div className="eb-glyph">⚠</div>
+          <div className="eb-glyph"><AlertTriangle size={32} /></div>
           <div className="eb-title">Something broke</div>
           <div className="eb-detail">
             {this.props.name && <span>The <strong>{this.props.name}</strong> tab hit an error. </span>}

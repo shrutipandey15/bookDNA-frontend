@@ -25,3 +25,9 @@
 .dna-section-label { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; margin-top: 18px; }
 .dna-blind { font-size: 12px; color: #6a6670; font-style: italic; margin-bottom: 4px; padding-left: 12px; border-left: 2px solid var(--border); }
 .dna-footer { display: flex; justify-content: space-between; margin-top: 20px; font-family: var(--font-mono); font-size: 9px; color: var(--text-ghost); letter-spacing: 2px; text-transform: uppercase; }
+
+@media (max-width: 480px) {
+  .dna-card { padding: 20px; border-radius: 16px; }
+  .dna-name { font-size: 22px; }
+  .dna-bar-label { width: 68px; font-size: 10px; }
+}

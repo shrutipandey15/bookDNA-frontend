@@ -137,3 +137,10 @@
   transition: color 0.2s;
 }
 .auth-forgot:hover { color: #B8964E; }
+@media (max-width: 480px) {
+  .auth-card { padding: 28px 20px; border-radius: 16px; }
+  .auth-logo { font-size: 26px; }
+  .auth-input { font-size: 16px; } /* 16px prevents iOS zoom-in on focus */
+  .auth-submit { font-size: 16px; min-height: 44px; }
+  .auth-tab { min-height: 36px; }
+}
