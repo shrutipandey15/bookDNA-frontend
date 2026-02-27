@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { Settings } from "lucide-react";
 import { Routes, Route, useParams, Link, useNavigate, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
@@ -9,17 +9,18 @@ import AuthPage from "./pages/AuthPage";
 import BookCard from "./components/BookCard";
 import EntryModal from "./components/EntryModal";
 import DNACard from "./components/DNACard";
-import EchoesPage from "./pages/EchoesPage";
-import SettingsPage from "./pages/SettingsPage";
-import AdminPage from "./pages/AdminPage";
-import PublicProfile from "./pages/PublicProfile";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
 import LandingPage from "./pages/LandingPage";
 import { Heatmap, Stats } from "./components/Panels";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { EMO_LIST } from "./services/emotions";
 import { clearCache } from "./services/offline";
 import "./App.css";
+
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const PublicProfile = lazy(() => import("./pages/PublicProfile"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const EchoesPage = lazy(() => import("./pages/EchoesPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 
 function SharedProfile() {
   const { token } = useParams();
@@ -58,7 +59,6 @@ function SharedProfile() {
       </header>
       <main className="main" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
          <div className="dna-reveal-label" style={{ marginTop: 0 }}>Reading Personality</div>
-         {/* Read-Only Mode for Shared Profile */}
          <DNACard profile={profile} username={profile.username || "Reader"} allowShare={false} />
       </main>
     </div>
@@ -86,7 +86,6 @@ function Dashboard() {
   const [toast, setToast] = useState(null);
   const dnaCardRef = useRef(null);
 
-  // Fetch analytics for the active tab, but only when stale or missing
   useEffect(() => {
     if (tab === "heatmap") ensureFresh("heatmap");
     if (tab === "stats") ensureFresh("stats");
@@ -129,8 +128,6 @@ function Dashboard() {
     catch { showToast("Couldn't save card — try a screenshot instead."); }
   };
 
-  const handleLogout = () => { logout(); clearCache(); };
-
   if (loading) return <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Loading library...</div></div>;
 
   const canGenerate = entries.length >= 3;
@@ -170,39 +167,47 @@ function Dashboard() {
         {tab === "shelf" && (
           <ErrorBoundary name="Shelf">
             <div className="shelf-section">
-              <button className="add-btn" onClick={() => setModal("new")}>+ Add Book</button>
-              {!canGenerate && entries.length > 0 && (
-                <div className="progress-wrap">
-                  <div className="progress-info"><span>DNA Progress</span><span className="progress-count">{entries.length} / 3</span></div>
-                  <div className="progress-track"><div className="progress-fill" style={{ width: `${Math.min(100, (entries.length / 3) * 100)}%` }} /></div>
-                </div>
-              )}
-              {entries.length > 0 && (
-                <div className="shelf-controls">
-                  <div className="shelf-filters">
-                    <button className={`sf-chip ${!filterEmotion ? "active" : ""}`} onClick={() => setFilterEmotion(null)}>All</button>
-                    {EMO_LIST.map(([id, e]) => {
-                      const count = entries.filter(en => en.emotions?.some(em => em.emotion_id === id)).length;
-                      if (!count) return null;
-                      return (
-                        <button key={id} className={`sf-chip ${filterEmotion === id ? "active" : ""}`} style={{ "--fc": e.color }} onClick={() => setFilterEmotion(filterEmotion === id ? null : id)}>
-                          {e.icon} {e.label} <span className="sf-count">{count}</span>
-                        </button>
-                      );
-                    })}
+              {entries.length === 0 ? (
+                
+                <EmptyShelf onAddClick={() => setModal("new")} />
+                
+              ) : (
+                <>
+                  <button className="add-btn" onClick={() => setModal("new")}>+ Add Book</button>
+                  {!canGenerate && entries.length > 0 && (
+                    <div className="progress-wrap">
+                      <div className="progress-info"><span>DNA Progress</span><span className="progress-count">{entries.length} / 3</span></div>
+                      <div className="progress-track"><div className="progress-fill" style={{ width: `${Math.min(100, (entries.length / 3) * 100)}%` }} /></div>
+                    </div>
+                  )}
+                  {entries.length > 0 && (
+                    <div className="shelf-controls">
+                      <div className="shelf-filters">
+                        <button className={`sf-chip ${!filterEmotion ? "active" : ""}`} onClick={() => setFilterEmotion(null)}>All</button>
+                        {EMO_LIST.map(([id, e]) => {
+                          const count = entries.filter(en => en.emotions?.some(em => em.emotion_id === id)).length;
+                          if (!count) return null;
+                          return (
+                            <button key={id} className={`sf-chip ${filterEmotion === id ? "active" : ""}`} style={{ "--fc": e.color }} onClick={() => setFilterEmotion(filterEmotion === id ? null : id)}>
+                              {e.icon} {e.label} <span className="sf-count">{count}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="shelf-sort">
+                        <select className="ss-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                          <option value="date">Newest</option>
+                          <option value="intensity">Intensity</option>
+                          <option value="title">A → Z</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                  <div className="shelf-grid">
+                    {filteredEntries.map((entry, i) => <BookCard key={entry.id} entry={entry} index={i} onClick={() => setModal(entry)} />)}
                   </div>
-                  <div className="shelf-sort">
-                    <select className="ss-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                      <option value="date">Newest</option>
-                      <option value="intensity">Intensity</option>
-                      <option value="title">A → Z</option>
-                    </select>
-                  </div>
-                </div>
+                </>
               )}
-              <div className="shelf-grid">
-                {filteredEntries.map((entry, i) => <BookCard key={entry.id} entry={entry} index={i} onClick={() => setModal(entry)} />)}
-              </div>
             </div>
           </ErrorBoundary>
         )}
@@ -251,7 +256,6 @@ function Dashboard() {
   );
 }
 
-// Wraps authenticated routes. JournalProvider mounts once and persists across navigation.
 function AuthedLayout() {
   const { authed } = useAuth();
   if (!authed) return <Navigate to="/login" replace />;
@@ -262,34 +266,40 @@ function AuthedLayout() {
   );
 }
 
+const RouteLoader = () => (
+  <div className="loading-screen">
+    <div className="loading-glyph">◈</div>
+  </div>
+);
+
 export default function App() {
   const { authed, loading } = useAuth();
   const navigate = useNavigate();
-  if (loading) return <div className="loading-screen"><div className="loading-glyph">◈</div></div>;
+  
+  if (loading) return <RouteLoader />;
 
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/s/:token" element={<SharedProfile />} />
-      <Route path="/u/:username" element={<PublicProfile />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/login" element={authed ? <Navigate to="/" replace /> : <AuthPage />} />
+    <Suspense fallback={<RouteLoader />}>
+      <Routes>
+        <Route path="/s/:token" element={<SharedProfile />} />
+        <Route path="/u/:username" element={<PublicProfile />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/login" element={authed ? <Navigate to="/" replace /> : <AuthPage />} />
 
-      {/* "/" is a layout route: AuthedLayout for authed users, LandingPage otherwise.
-          Nested routes render inside AuthedLayout's <Outlet />. */}
-      <Route
-        path="/"
-        element={
-          authed
-            ? <AuthedLayout />
-            : <LandingPage onGetStarted={() => navigate("/login")} />
-        }
-      >
-        <Route index element={<Dashboard />} />
-        <Route path="echoes" element={<EchoesPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="admin" element={<AdminPage />} />
-      </Route>
-    </Routes>
+        <Route
+          path="/"
+          element={
+            authed
+              ? <AuthedLayout />
+              : <LandingPage onGetStarted={() => navigate("/login")} />
+          }
+        >
+          <Route index element={<Dashboard />} />
+          <Route path="echoes" element={<EchoesPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="admin" element={<AdminPage />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }
