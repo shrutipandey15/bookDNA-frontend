@@ -220,7 +220,7 @@ function Dashboard() {
             <Suspense fallback={
               <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Building your room...</div></div>
             }>
-              <ReadingRoom onBookClick={(entry) => setModal(entry)} />
+              <ReadingRoom onBookClick={(entry) => setModal(entry)} username={user?.username} />
             </Suspense>
           </ErrorBoundary>
         )}

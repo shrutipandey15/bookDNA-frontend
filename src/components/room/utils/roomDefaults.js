@@ -9,6 +9,7 @@ export function buildDefaultLayout(entries) {
   const mid = books.slice(5, 12);
   const bot = books.slice(12, 20);
 
+  // Place starter decorations
   if (top.length >= 2) top.splice(2, 0, { type: "deco", id: "plant_basic" });
   else top.push({ type: "deco", id: "plant_basic" });
 
