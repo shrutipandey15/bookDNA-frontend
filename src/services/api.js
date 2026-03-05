@@ -237,3 +237,24 @@ export async function fetchBlob(endpoint) {
   if (!res.ok) throw new Error("Failed to fetch image");
   return res.blob();
 }
+
+// ── Reading Room ──
+export async function getRoom() {
+  const res = await apiFetch("/user/room");
+  if (!res.ok) return { layout: null, unlocks: [], decorations: [] };
+  return res.json();
+}
+
+export async function saveRoomLayout(shelves) {
+  const res = await apiFetch("/user/room", {
+    method: "PATCH",
+    body: JSON.stringify({ shelves }),
+  });
+  return res.json();
+}
+
+export async function getPublicRoom(username) {
+  const res = await apiFetch(`/public/${username}/room`);
+  if (!res.ok) return { layout: null, entries: {} };
+  return res.json();
+}

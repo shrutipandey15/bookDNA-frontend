@@ -121,6 +121,9 @@ export function JournalProvider({ children }) {
       const saved = await createEntry(data);
       setEntries(prev => { const next = prev.map(e => e.id === tempId ? saved : e); setCachedEntries(next); return next; });
       setStale({ heatmap: true, stats: true, profile: true });
+      if (saved.room_unlocks_new?.length > 0) {
+        window.dispatchEvent(new CustomEvent("room-unlock", { detail: saved.room_unlocks_new }));
+      }
       return true;
     } catch (err) {
       setEntries(prev => prev.filter(e => e.id !== tempId));
@@ -157,11 +160,14 @@ export function JournalProvider({ children }) {
   const generate = async () => {
     setGenerating(true);
     try {
-      await generateDNA();
+      const result = await generateDNA();
       const profile = await getDNAProfile();
       setAnalytics(prev => ({ ...prev, profile }));
       setStale(prev => ({ ...prev, profile: false, heatmap: true, stats: true }));
       setGenerating(false);
+      if (result?.room_unlocks_new?.length > 0) {
+        window.dispatchEvent(new CustomEvent("room-unlock", { detail: result.room_unlocks_new }));
+      }
       return true;
     } catch (err) {
       setGenerating(false);
@@ -175,6 +181,9 @@ export function JournalProvider({ children }) {
       const data = await generateShareToken();
       setShareToken(data.share_token);
       setGenerating(false);
+      if (data.room_unlocks_new?.length > 0) {
+        window.dispatchEvent(new CustomEvent("room-unlock", { detail: data.room_unlocks_new }));
+      }
       return data.share_token;
     } catch (err) {
       setGenerating(false);

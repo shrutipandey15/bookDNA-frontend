@@ -21,6 +21,8 @@ const PublicProfile = lazy(() => import("./pages/PublicProfile"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const EchoesPage = lazy(() => import("./pages/EchoesPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const ReadingRoom = lazy(() => import("./components/room/ReadingRoom"));
+
 
 function SharedProfile() {
   const { token } = useParams();
@@ -134,6 +136,7 @@ function Dashboard() {
 
   const TABS = [
     { id: "shelf", label: "Shelf", count: entries.length },
+    { id: "room", label: "Room" },
     { id: "heatmap", label: "Heatmap" },
     { id: "stats", label: "Stats" },
     { id: "dna", label: "DNA" },
@@ -209,6 +212,16 @@ function Dashboard() {
                 </>
               )}
             </div>
+          </ErrorBoundary>
+        )}
+
+        {tab === "room" && (
+          <ErrorBoundary name="Room">
+            <Suspense fallback={
+              <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Building your room...</div></div>
+            }>
+              <ReadingRoom onBookClick={(entry) => setModal(entry)} />
+            </Suspense>
           </ErrorBoundary>
         )}
 
