@@ -19,9 +19,8 @@ export default function ShelfBook({ entry, index, editMode, isDragging, isHorizo
   const topEdge = secondaryEmo?.color || spineColor;
 
   if (isHorizontal) {
-    // Lying flat — width is the "height" of the book, height is the spine thickness
-    const bookWidth = 80 + ((seed % 5) - 2) * 4; // 72-88px
-    const bookThick = 16 + intensity * 1.4;        // 17-30px
+    const bookWidth = 120 + ((seed % 5) - 2) * 6;
+    const bookThick = 22 + intensity * 1.6;
 
     return (
       <div
