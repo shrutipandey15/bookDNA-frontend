@@ -1,22 +1,77 @@
-import React from 'react';
+import "./EmptyShelf.css";
+
+const SEED_SHELVES = [
+  "Sad girl autumn",
+  "The classics no one reads",
+  "Hot-button essays",
+  "Slow novels for slow weather",
+  "Books that ruined me in college",
+];
+
+const AFTER_STEPS = [
+  { n: "01", t: "You log it",         d: "Title + author. We find the cover." },
+  { n: "02", t: "You tag what it did", d: "Emotions, intensity, the line that hit." },
+  { n: "03", t: "You shelve it",       d: "Three books = DNA. Five = patterns. Ten = portrait." },
+];
 
 export default function EmptyShelf({ onAddClick }) {
   return (
-    <div className="empty-state" style={{ marginTop: '60px' }}>
-      <div className="empty-glyph" style={{ animation: 'pulse 3s infinite', color: 'var(--rust)' }}>◈</div>
-      <div className="empty-title" style={{ fontStyle: 'normal', fontSize: '24px', color: 'var(--text-primary)' }}>
-        Welcome to your shelf
+    <div className="es-page">
+      <div className="es-grid">
+        <div>
+          <div className="label es-eyebrow">· your shelf is empty ·</div>
+          <h1 className="es-h1">
+            Begin with<br />
+            <em>one book.</em>
+          </h1>
+          <p className="es-dek">
+            Not the book that's impressive. The book that <em>did</em> something to you.
+            The one you'd lend out reluctantly.
+          </p>
+
+          <button className="es-search" onClick={onAddClick}>
+            <span className="es-search-glyph">⌕</span>
+            <span className="es-search-text">search for a book…</span>
+            <span className="es-kbd">⌘ K</span>
+          </button>
+          <div className="es-search-note">
+            we'll search Google Books, Open Library, and the catalog at once.
+          </div>
+
+          <div className="es-seeds">
+            <div className="label" style={{ marginBottom: 10 }}>or — pick a suggested shelf to seed yours</div>
+            <div className="es-seed-row">
+              {SEED_SHELVES.map((p) => (
+                <button key={p} className="es-seed-chip" onClick={onAddClick}>{p}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="es-right">
+          <div className="label es-shelf-label">↓ your shelf · awaiting</div>
+          <div className="shelf" style={{ opacity: 0.85 }}>
+            <div className="shelf-row" style={{ minHeight: 180, alignItems: "flex-end", justifyContent: "center" }}>
+              <button className="es-ghost-book" onClick={onAddClick} aria-label="Add your first book">+</button>
+            </div>
+            <div className="shelf-plank" />
+          </div>
+          <div className="es-hand">even one volume is enough to begin.</div>
+
+          <div className="es-after">
+            <div className="label" style={{ marginBottom: 12 }}>what happens after</div>
+            {AFTER_STEPS.map((s, i) => (
+              <div key={s.n} className="es-after-row" style={{ borderBottom: i < AFTER_STEPS.length - 1 ? "1px solid var(--rule-soft)" : "none" }}>
+                <div className="es-after-num">{s.n}</div>
+                <div>
+                  <div className="es-after-t">{s.t}</div>
+                  <div className="es-after-d">{s.d}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      <div className="empty-sub" style={{ maxWidth: '320px', margin: '0 auto 24px', lineHeight: '1.6' }}>
-        Log what your first 3 books did to you to unlock your unique Reading DNA profile.
-      </div>
-      <button 
-        className="add-btn" 
-        onClick={onAddClick} 
-        style={{ fontSize: '14px', padding: '12px 28px' }}
-      >
-        + Add Your First Book
-      </button>
     </div>
   );
 }

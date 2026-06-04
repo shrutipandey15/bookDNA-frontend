@@ -11,14 +11,13 @@ function passwordStrength(pw) {
   if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
   if (/\d/.test(pw)) score++;
   if (/[^a-zA-Z0-9]/.test(pw)) score++;
-
   const levels = [
-    { label: "", color: "" },
-    { label: "Weak", color: "#C4553A" },
-    { label: "Fair", color: "#C47A3A" },
-    { label: "Good", color: "#B8964E" },
-    { label: "Strong", color: "#7A8B6F" },
-    { label: "Very strong", color: "#5A8B6F" },
+    { label: "", color: "var(--rule)" },
+    { label: "kindling", color: "var(--oxblood)" },
+    { label: "fair", color: "#c47a3a" },
+    { label: "good", color: "var(--brass)" },
+    { label: "solid as oak", color: "var(--moss)" },
+    { label: "ironwood", color: "#5a8b6f" },
   ];
   return { score, ...levels[score] };
 }
@@ -51,8 +50,8 @@ export default function AuthPage() {
       if (!username.trim() || username.length < 3) return "Username must be at least 3 characters";
       if (!/^[a-zA-Z0-9_-]+$/.test(username)) return "Username: letters, numbers, _ and - only";
       if (password.length < 8) return "Password must be at least 8 characters";
-      const strength = passwordStrength(password);
-      if (strength.score < 2) return "Password is too weak. Add uppercase, numbers, or symbols.";
+      const s = passwordStrength(password);
+      if (s.score < 2) return "Password is too weak. Add uppercase, numbers, or symbols.";
     }
     if (!email.includes("@") || !email.includes(".")) return "Please enter a valid email";
     return null;
@@ -62,7 +61,6 @@ export default function AuthPage() {
     e.preventDefault();
     const validationError = validate();
     if (validationError) { setError(validationError); return; }
-
     setError("");
     setLoading(true);
     try {
@@ -73,13 +71,9 @@ export default function AuthPage() {
     } catch (err) {
       const msg = err.message || "Something went wrong";
       setError(msg);
-
       const minuteMatch = msg.match(/(\d+)\s*minute/);
-      if (minuteMatch) {
-        startCooldown(parseInt(minuteMatch[1]) * 60);
-      } else if (msg.includes("Too many")) {
-        startCooldown(60);
-      }
+      if (minuteMatch) startCooldown(parseInt(minuteMatch[1]) * 60);
+      else if (msg.includes("Too many")) startCooldown(60);
     } finally {
       setLoading(false);
     }
@@ -87,101 +81,147 @@ export default function AuthPage() {
 
   const strength = mode === "register" ? passwordStrength(password) : null;
   const isDisabled = loading || cooldown > 0;
+  const isLogin = mode === "login";
 
   return (
-    <div className="auth-screen">
-      <div className="auth-bg" />
-      <div className="auth-card">
-        <div className="auth-logo">
-          BOOK <span>DNA</span>
+    <div className="auth-rr">
+      <div className="auth-rr-left">
+        <div className="auth-rr-brand">
+          Book&nbsp;<em>DNA</em>
         </div>
-        <div className="auth-tagline">
-          The emotional fingerprint of your reading life
-        </div>
+        <div>
+          <h1 className="auth-rr-h1">
+            {isLogin ? <>Welcome back<br /><em>to your shelf.</em></> : <>Begin your<br /><em>private shelf.</em></>}
+          </h1>
+          <p className="auth-rr-dek">
+            {isLogin
+              ? "Three new echoes since you left. Your reading streak is intact. A book has been pulled from the catalog and is waiting on your desk."
+              : "A slow, small ritual. Log what books did to you — not ratings, but the actual weather. We'll map the patterns into a portrait of who you've become as a reader."}
+          </p>
 
-        <div className="auth-tabs">
-          <button
-            className={`auth-tab ${mode === "login" ? "active" : ""}`}
-            onClick={() => { setMode("login"); setError(""); setEmail(""); setPassword(""); }}
-          >
-            Sign In
-          </button>
-          <button
-            className={`auth-tab ${mode === "register" ? "active" : ""}`}
-            onClick={() => { setMode("register"); setError(""); setEmail(""); setPassword(""); setUsername(""); setDisplayName(""); }}
-          >
-            Create Account
-          </button>
+          <div className="auth-rr-echo">
+            <div className="auth-rr-echo-label">ECHO OF THE DAY</div>
+            <div className="auth-rr-echo-quote">
+              “Read this entire book on a train and missed my stop twice.”
+            </div>
+            <div className="label-sm auth-rr-echo-by">— @arun.d · Tomorrow ×3</div>
+          </div>
         </div>
+        <div className="auth-rr-foot">BOOK DNA · ESTD. 2024 · A PRIVATE READER'S LEDGER</div>
+      </div>
 
-        <form onSubmit={submit} className="auth-form">
-          {mode === "register" && (
-            <>
-              <input
-                type="text"
-                placeholder="Username (letters, numbers, _ -)"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
-                required minLength={3} maxLength={50}
-                autoComplete="username"
-                className="auth-input"
-              />
-              <input
-                type="text"
-                placeholder="Display Name (optional)"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                maxLength={100}
-                className="auth-input"
-              />
-            </>
-          )}
-          <input
-            type="email" placeholder="Email"
-            value={email} onChange={(e) => setEmail(e.target.value)}
-            required autoComplete="email"
-            className="auth-input"
-          />
-          <div className="auth-pw-wrap">
-            <input
-              type="password"
-              placeholder={mode === "register" ? "Password (min 8 chars)" : "Password"}
-              value={password} onChange={(e) => setPassword(e.target.value)}
-              required minLength={mode === "register" ? 8 : 1}
-              autoComplete={mode === "register" ? "new-password" : "current-password"}
-              className="auth-input"
-            />
-            {strength && password.length > 0 && (
-              <div className="auth-strength">
-                <div className="auth-strength-bar">
-                  <div
-                    className="auth-strength-fill"
-                    style={{ width: `${(strength.score / 5) * 100}%`, background: strength.color }}
+      <div className="auth-rr-right">
+        <div className="auth-rr-form">
+          <div className="label auth-rr-eyebrow">{isLogin ? "· return to your shelf ·" : "· begin your shelf ·"}</div>
+          <h2 className="auth-rr-h2">
+            {isLogin ? <>Sign <em>in</em>.</> : <>Create <em>account</em>.</>}
+          </h2>
+
+          <form onSubmit={submit}>
+            {!isLogin && (
+              <>
+                <div className="auth-rr-field">
+                  <div className="label-sm auth-rr-fl">username</div>
+                  <input
+                    className="auth-rr-input"
+                    type="text"
+                    placeholder="letters, numbers, _ and -"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
+                    required minLength={3} maxLength={50}
+                    autoComplete="username"
                   />
                 </div>
-                <span className="auth-strength-label" style={{ color: strength.color }}>
-                  {strength.label}
-                </span>
+                <div className="auth-rr-field">
+                  <div className="label-sm auth-rr-fl">display name <span style={{ fontStyle: "italic" }}>(optional)</span></div>
+                  <input
+                    className="auth-rr-input"
+                    type="text"
+                    placeholder="how the world sees you"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    maxLength={100}
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="auth-rr-field">
+              <div className="label-sm auth-rr-fl">email</div>
+              <input
+                className="auth-rr-input"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required autoComplete="email"
+              />
+            </div>
+
+            <div className="auth-rr-field">
+              <div className="label-sm auth-rr-fl">password</div>
+              <input
+                className="auth-rr-input"
+                type="password"
+                placeholder={isLogin ? "your key" : "min 8 chars"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required minLength={isLogin ? 1 : 8}
+                autoComplete={isLogin ? "current-password" : "new-password"}
+              />
+              {strength && password.length > 0 && (
+                <div className="auth-rr-strength">
+                  <div className="auth-rr-strength-segs">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div
+                        key={i}
+                        className="auth-rr-strength-seg"
+                        style={{ background: i <= strength.score ? strength.color : "var(--rule-soft)" }}
+                      />
+                    ))}
+                  </div>
+                  <div className="label-sm auth-rr-strength-label" style={{ color: strength.color }}>
+                    strength · {strength.label || "—"}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {error && <div className="auth-rr-error">{error}</div>}
+            {cooldown > 0 && (
+              <div className="auth-rr-cooldown">
+                Locked out. Try again in {Math.ceil(cooldown / 60)}:{String(cooldown % 60).padStart(2, "0")}
               </div>
             )}
+
+            <button type="submit" className="btn brass auth-rr-submit" disabled={isDisabled}>
+              <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 17 }}>
+                {loading ? "Reading" : cooldown > 0 ? "Locked" : isLogin ? "Enter" : "Begin"}
+              </span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.2em" }}>YOUR SHELF</span>
+            </button>
+          </form>
+
+          <div className="auth-rr-links">
+            <Link to="/reset-password" className="auth-rr-link-italic">forgot password →</Link>
+            <a
+              className="auth-rr-link-italic"
+              role="button"
+              onClick={() => {
+                setMode(isLogin ? "register" : "login");
+                setError("");
+                setPassword("");
+              }}
+            >
+              {isLogin ? "new here? create account →" : "have an account? sign in →"}
+            </a>
           </div>
 
-          {error && <div className="auth-error">{error}</div>}
-
-          {cooldown > 0 && (
-            <div className="auth-cooldown">
-              Locked out. Try again in {Math.ceil(cooldown / 60)}:{String(cooldown % 60).padStart(2, "0")}
-            </div>
-          )}
-
-          <button type="submit" className="auth-submit" disabled={isDisabled}>
-            {loading ? "..." : cooldown > 0 ? "Locked" : mode === "login" ? "Enter" : "Start Your DNA"}
-          </button>
-
-          {mode === "login" && (
-            <Link to="/reset-password" className="auth-forgot">Forgot password?</Link>
-          )}
-        </form>
+          <div className="auth-rr-trust">
+            <div className="auth-rr-trust-dot">✦</div>
+            <div className="auth-rr-trust-text">No ads, no tracking, no feeds. Your shelf is yours.</div>
+          </div>
+        </div>
       </div>
     </div>
   );

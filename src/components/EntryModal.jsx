@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Loader2, BookOpen, Pencil } from "lucide-react";
-import { EMO_LIST } from "../services/emotions";
+import { EMO_LIST, EMOTIONS } from "../services/emotions";
 import { searchBooks } from "../services/api";
 import "./EntryModal.css";
+
+const INTENSITY_LABELS = [
+  "", "barely", "barely", "lingered", "lingered",
+  "felt it", "felt it", "obsessed", "obsessed", "wrecked", "wrecked",
+];
 
 export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   const [title, setTitle] = useState(entry?.title || "");
@@ -10,13 +15,10 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   const [coverUrl, setCoverUrl] = useState(entry?.cover_url || "");
   const [isbn, setIsbn] = useState(entry?.isbn || "");
   const [intensity, setIntensity] = useState(entry?.intensity || 5);
-  const [emotions, setEmotions] = useState(
-    entry?.emotions?.map((e) => e.emotion_id) || []
-  );
+  const [emotions, setEmotions] = useState(entry?.emotions?.map((e) => e.emotion_id) || []);
   const [quote, setQuote] = useState(entry?.quote || "");
   const [publicEcho, setPublicEcho] = useState(entry?.public_echo || "");
 
-  // Search state
   const [searchResults, setSearchResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -24,19 +26,13 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   const searchTimeout = useRef(null);
   const resultsRef = useRef(null);
   const inputRef = useRef(null);
-  const justSelected = useRef(false); // prevents re-search after picking a result
-  const isEditing = useRef(!!entry?.id); // stable — set once on mount, never changes
+  const justSelected = useRef(false);
+  const isEditing = useRef(!!entry?.id);
 
-  // Debounced search — only for new entries, never when editing
   useEffect(() => {
     if (isEditing.current) return;
     if (justSelected.current) { justSelected.current = false; return; }
-    if (title.length < 3) {
-      setSearchResults([]);
-      setShowResults(false);
-      return;
-    }
-
+    if (title.length < 3) { setSearchResults([]); setShowResults(false); return; }
     setSearching(true);
     clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(async () => {
@@ -45,16 +41,12 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
         setSearchResults(results.slice(0, 5));
         setShowResults(results.length > 0);
         setSelectedIndex(-1);
-      } catch {
-        setSearchResults([]);
-      }
+      } catch { setSearchResults([]); }
       setSearching(false);
     }, 600);
-
     return () => clearTimeout(searchTimeout.current);
   }, [title]);
 
-  // Close results on click outside
   useEffect(() => {
     const handleClick = (e) => {
       if (resultsRef.current && !resultsRef.current.contains(e.target) &&
@@ -75,39 +67,23 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
     setShowResults(false);
     setSearchResults([]);
   };
-
   const useCustomTitle = () => {
     justSelected.current = true;
     setShowResults(false);
     setSearchResults([]);
   };
-
   const handleKeyDown = (e) => {
     if (!showResults || searchResults.length === 0) return;
-
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, searchResults.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && selectedIndex >= 0) {
-      e.preventDefault();
-      selectBook(searchResults[selectedIndex]);
-    } else if (e.key === "Escape") {
-      setShowResults(false);
-    }
+    if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex((i) => Math.min(i + 1, searchResults.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex((i) => Math.max(i - 1, 0)); }
+    else if (e.key === "Enter" && selectedIndex >= 0) { e.preventDefault(); selectBook(searchResults[selectedIndex]); }
+    else if (e.key === "Escape") { setShowResults(false); }
   };
-
-  const toggleEmo = (id) => {
-    setEmotions((prev) =>
-      prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id]
-    );
-  };
+  const toggleEmo = (id) => setEmotions((prev) => prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id]);
 
   const handleSave = () => {
     if (!title.trim()) return;
-    const data = {
+    onSave({
       title: title.trim(),
       author: author.trim() || null,
       cover_url: coverUrl || null,
@@ -116,178 +92,181 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
       emotions: emotions.map((id) => ({ emotion_id: id, strength: intensity })),
       quote: quote.trim() || null,
       public_echo: publicEcho.trim() || null,
-    };
-
-    // Pass data up — App handles optimistic update + API call
-    onSave(data, entry?.id || null);
+    }, entry?.id || null);
   };
+  const handleDelete = () => { if (entry?.id) onDelete(entry.id); };
 
-  const handleDelete = () => {
-    if (!entry?.id) return;
-    // Pass id up — App handles optimistic delete + API call
-    onDelete(entry.id);
-  };
-
-  const intLabels = [
-    "", "barely", "barely", "lingered", "lingered",
-    "felt it", "felt it", "obsessed", "obsessed", "wrecked", "wrecked",
-  ];
+  const isEdit = !!entry?.id;
+  const primaryEmo = emotions[0] ? EMOTIONS[emotions[0]] : null;
+  const coverColor = primaryEmo?.color || "var(--oxblood)";
+  const entryNo = entry?.id ? String(entry.id).slice(-3).padStart(3, "0") : "NEW";
+  const firstWords = title ? title.split(" ").slice(0, 3).join(" ") : "";
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-text">
-            {entry?.id ? "Edit Entry" : "Add Book"}
+    <div className="em-card" role="dialog" aria-modal="true">
+      <div className="em-left" style={{ background: `linear-gradient(155deg, ${coverColor}, color-mix(in srgb, ${coverColor} 50%, #000))` }}>
+        <div className="em-left-frame" />
+        <div className="em-left-content">
+          <div>
+            <div className="em-left-eyebrow">ENTRY № {entryNo} · {isEdit ? "IN YOUR SHELF" : "NEW · UNSHELVED"}</div>
+            <div className="em-left-author">{author || "—"}</div>
           </div>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <div>
+            <div className="em-left-title">{title || "Untitled volume"}</div>
+            <div className="em-left-int-wrap">
+              <div className="em-left-int-label">INTENSITY</div>
+              <div className="em-left-int-row">
+                <span className="em-left-int-num">{intensity}</span>
+                <span className="em-left-int-of">/ 10</span>
+              </div>
+              <div className="em-left-int-word">{INTENSITY_LABELS[intensity] || ""}.</div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        {/* Book search with autocomplete */}
-        <div className="m-search-wrap">
-          <input
-            ref={inputRef}
-            className="m-input m-input-title"
-            placeholder={entry?.id ? "Book title" : "Search for a book..."}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onFocus={() => searchResults.length > 0 && setShowResults(true)}
-            onKeyDown={handleKeyDown}
-            autoComplete="off"
-          />
-          {searching && <Loader2 size={14} className="m-search-spinner" />}
+      <div className="em-right">
+        <button className="em-close" onClick={onClose} aria-label="Close">×</button>
 
-          {showResults && (
-            <div className="m-search-results" ref={resultsRef}>
-              {searchResults.map((book, i) => (
-                <div
-                  key={`${book.title}-${book.isbn || i}`}
-                  className={`m-search-item ${i === selectedIndex ? "selected" : ""}`}
-                  onClick={() => selectBook(book)}
-                  onMouseEnter={() => setSelectedIndex(i)}
-                >
-                  {book.cover_url ? (
-                    <img
-                      className="m-search-cover"
-                      src={book.cover_url}
-                      alt=""
-                      onError={(e) => { e.target.style.display = "none"; }}
-                    />
-                  ) : (
-                    <div className="m-search-cover-placeholder"><BookOpen size={18} /></div>
-                  )}
-                  <div className="m-search-info">
-                    <div className="m-search-book-title">{book.title}</div>
-                    <div className="m-search-book-author">
-                      {book.author || "Unknown author"}
-                      {book.published_year && ` · ${book.published_year}`}
+        <div className="label" style={{ marginBottom: 8 }}>{isEdit ? `edit · entry no. ${entryNo}` : "new entry"}</div>
+        <h2 className="em-h">
+          {firstWords ? <>What did <em>{firstWords}</em> do to you?</> : "Begin a new entry."}
+        </h2>
+
+        <div className="em-field">
+          <div className="label-sm em-field-label">title · author</div>
+          <div className="em-search-wrap">
+            <input
+              ref={inputRef}
+              className="em-input em-input-title"
+              placeholder={isEdit ? "Book title" : "Search for a book…"}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onFocus={() => searchResults.length > 0 && setShowResults(true)}
+              onKeyDown={handleKeyDown}
+              autoComplete="off"
+            />
+            {searching && <Loader2 size={14} className="em-search-spinner" />}
+            {showResults && (
+              <div className="em-search-results" ref={resultsRef}>
+                {searchResults.map((book, i) => (
+                  <div
+                    key={`${book.title}-${book.isbn || i}`}
+                    className={`em-search-item ${i === selectedIndex ? "selected" : ""}`}
+                    onClick={() => selectBook(book)}
+                    onMouseEnter={() => setSelectedIndex(i)}
+                  >
+                    {book.cover_url ? (
+                      <img className="em-search-cover" src={book.cover_url} alt="" onError={(e) => { e.target.style.display = "none"; }} />
+                    ) : (
+                      <div className="em-search-cover-placeholder"><BookOpen size={18} /></div>
+                    )}
+                    <div>
+                      <div className="em-search-book-title">{book.title}</div>
+                      <div className="em-search-book-author">
+                        {book.author || "Unknown author"}{book.published_year && ` · ${book.published_year}`}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              <div className="m-search-item m-search-custom" onClick={useCustomTitle}>
-                <div className="m-search-cover-placeholder"><Pencil size={18} /></div>
-                <div className="m-search-info">
-                  <div className="m-search-book-title">Use "{title}" as-is</div>
-                  <div className="m-search-book-author">Add title & author manually</div>
+                ))}
+                <div className="em-search-item em-search-custom" onClick={useCustomTitle}>
+                  <div className="em-search-cover-placeholder"><Pencil size={18} /></div>
+                  <div>
+                    <div className="em-search-book-title">Use “{title}” as-is</div>
+                    <div className="em-search-book-author">Add title &amp; author manually</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+          </div>
+          {!coverUrl && (
+            <input
+              className="em-input em-input-author"
+              placeholder="Author"
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+            />
           )}
         </div>
 
-        {/* Selected book preview */}
-        {coverUrl && (
-          <div className="m-selected-preview">
-            <img
-              src={coverUrl}
-              alt=""
-              className="m-preview-cover"
-              onError={(e) => { e.target.style.display = "none"; }}
-            />
-            <div className="m-preview-info">
-              <div className="m-preview-title">{title}</div>
-              <div className="m-preview-author">{author}</div>
-            </div>
-            <button
-              className="m-preview-clear"
-              onClick={() => { setCoverUrl(""); setIsbn(""); }}
-              title="Clear selection"
-            >×</button>
+        <div className="em-field">
+          <div className="label-sm em-field-label">what did it make you feel?</div>
+          <div className="em-emo-chips">
+            {EMO_LIST.map(([id, e]) => {
+              const active = emotions.includes(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={`chip ${active ? "active" : ""}`}
+                  style={{ "--chip-c": e.color }}
+                  onClick={() => toggleEmo(id)}
+                >
+                  <span className="swatch" />
+                  {e.label.toLowerCase()}
+                </button>
+              );
+            })}
           </div>
-        )}
-
-        <input
-          className="m-input"
-          placeholder="Author"
-          value={author}
-          onChange={(e) => setAuthor(e.target.value)}
-          style={coverUrl ? { display: "none" } : {}}
-        />
-
-        <div className="m-label">What did it make you feel?</div>
-        <div className="m-emo-grid">
-          {EMO_LIST.map(([id, e]) => (
-            <div
-              key={id}
-              className={`m-emo-tag ${emotions.includes(id) ? "active" : ""}`}
-              style={{ "--tc": e.color }}
-              onClick={() => toggleEmo(id)}
-            >
-              <e.Icon size={14} color={e.color} />
-              <span>{e.label}</span>
-            </div>
-          ))}
         </div>
 
-        <div className="m-label">Emotional intensity</div>
-        <div className="m-slider-row">
-          <span className="m-slider-val">{intensity}</span>
-          <input
-            type="range" min="1" max="10"
-            value={intensity}
-            onChange={(e) => setIntensity(+e.target.value)}
-            className="m-slider"
-          />
-          <span className="m-slider-label">{intLabels[intensity]}</span>
+        <div className="em-field">
+          <div className="em-int-head">
+            <div className="label-sm">emotional intensity</div>
+            <div className="em-int-word">{INTENSITY_LABELS[intensity] || ""}.</div>
+          </div>
+          <div className="em-int-slider">
+            <div className="em-int-track" />
+            <div className="em-int-fill" style={{ width: `${intensity * 10}%` }} />
+            <input
+              className="em-int-range"
+              type="range"
+              min="1" max="10"
+              value={intensity}
+              onChange={(e) => setIntensity(+e.target.value)}
+            />
+            {[1, 3, 5, 7, 10].map((n) => (
+              <span key={n} className="em-int-tick" style={{ left: `calc(${n * 10}% - 6px)` }}>{n}</span>
+            ))}
+          </div>
         </div>
 
-        <div className="m-label">The line that hit hardest</div>
-        <textarea
-          className="m-input m-textarea"
-          placeholder="Optional — the quote you can't forget..."
-          value={quote}
-          onChange={(e) => setQuote(e.target.value)}
-          rows={2}
-        />
-
-        <div className="m-echo-section">
-          <div className="m-echo-label">✦ Public Echo</div>
+        <div className="em-field">
+          <div className="label-sm em-field-label">the line that hit hardest</div>
           <textarea
-            className="m-input m-echo-input"
-            placeholder="Spoiler-free vibe for the world..."
+            className="em-input em-textarea em-quote"
+            placeholder="Optional — the quote you can't forget…"
+            value={quote}
+            onChange={(e) => setQuote(e.target.value)}
+            rows={2}
+          />
+        </div>
+
+        <div className="em-field">
+          <div className="em-echo-head">
+            <span style={{ color: "var(--brass)" }}>✦</span>
+            <div className="label-sm">public echo</div>
+            <span className="em-echo-hint">spoiler-free. for the world.</span>
+          </div>
+          <textarea
+            className="em-input em-textarea em-echo"
+            placeholder="Your one-line verdict…"
             value={publicEcho}
             onChange={(e) => setPublicEcho(e.target.value)}
             rows={2}
           />
-          <div className="m-echo-hint">
-            Vibes only. No spoilers. This is what people see.
-          </div>
         </div>
 
-        <div className="modal-actions">
-          {entry?.id && (
-            <button className="m-btn m-btn-danger" onClick={handleDelete}>
-              Delete
+        <div className="em-footer">
+          {isEdit ? (
+            <button className="em-remove" onClick={handleDelete}>– remove from shelf</button>
+          ) : <span />}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button className="btn ghost" onClick={onClose}>cancel</button>
+            <button className="btn brass" onClick={handleSave} disabled={!title.trim()}>
+              {isEdit ? "save changes" : "shelve it"}
             </button>
-          )}
-          <button
-            className="m-btn m-btn-primary"
-            onClick={handleSave}
-            disabled={!title.trim()}
-          >
-            {entry?.id ? "Update" : "Add Book"}
-          </button>
+          </div>
         </div>
       </div>
     </div>

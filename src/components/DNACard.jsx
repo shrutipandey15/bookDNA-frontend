@@ -1,11 +1,10 @@
 import { forwardRef, useState } from "react";
-import { Camera } from "lucide-react";
 import { EMOTIONS } from "../services/emotions";
 import { generateShareToken } from "../services/api";
 import ShareModal from "./ShareModal";
 import "./DNACard.css";
 
-const DNACard = forwardRef(function DNACard({ profile, username, allowShare = false, onSave }, ref) {
+const DNACard = forwardRef(function DNACard({ profile, username, allowShare = false, onSave, size = "large" }, ref) {
   const [showShare, setShowShare] = useState(false);
   const [shareToken, setShareToken] = useState(null);
 
@@ -22,88 +21,76 @@ const DNACard = forwardRef(function DNACard({ profile, username, allowShare = fa
   };
 
   const p = profile.personality;
-  const top = profile.top_emotions?.slice(0, 5) || [];
+  const top = (profile.top_emotions || []).slice(0, 5);
   const maxC = top[0]?.count || 1;
+  const [first, ...rest] = (p.name || "").split(" ");
+  const second = rest.join(" ");
 
   return (
     <div className="dna-wrapper">
-      <div className="dna-card" ref={ref} style={{ "--dc": p.color }}>
-        <div className="dna-glow" />
+      <div className={`dna-card anim-flip dna-card--${size}`} ref={ref} style={{ "--dc": p.color || "var(--oxblood)" }}>
+        <span className="dna-corner dna-corner-tl">◈</span>
+        <span className="dna-corner dna-corner-tr">◈</span>
+        <span className="dna-corner dna-corner-bl">◈</span>
+        <span className="dna-corner dna-corner-br">◈</span>
+        <span className="dna-frame" aria-hidden="true" />
+
         <div className="dna-header">
           <div>
-            <div className="dna-label">BOOK DNA™</div>
-            <div className="dna-sub">{profile.book_count} books · {new Date().getFullYear()}</div>
+            <div className="dna-label">BOOK DNA · CARD 04 / 12</div>
+            <div className="dna-vol">{profile.book_count || 0} VOLUMES · MMXXVI</div>
           </div>
-          <div className="dna-glyph">{p.glyph}</div>
+          <div className="dna-glyph">{p.glyph || "◈"}</div>
         </div>
-        <div className="dna-name">{p.name}</div>
-        <div className="dna-desc">{p.description}</div>
+
+        <h2 className="dna-name">
+          {first}{second && <><br /><em>{second}</em></>}
+        </h2>
+        {p.tagline && <div className="dna-tagline">“{p.tagline}”</div>}
+        <p className="dna-blurb">{p.description}</p>
+
         <div className="dna-divider" />
-        <div className="dna-fp-label">EMOTIONAL FINGERPRINT</div>
-        {top.map((t, i) => {
+
+        <div className="label dna-fp-label">emotional fingerprint</div>
+        {top.map((t) => {
           const em = EMOTIONS[t.emotion_id];
           if (!em) return null;
           return (
-            <div key={t.emotion_id} className="dna-bar-row" style={{ animationDelay: `${i * 0.1 + 0.3}s` }}>
-              <span className="dna-bar-icon"><em.Icon size={14} color={em.color} /></span>
-              <span className="dna-bar-label">{em.label}</span>
-              <div className="dna-bar-track">
-                <div className="dna-bar-fill" style={{ width: `${(t.count / maxC) * 100}%`, background: em.color }} />
-              </div>
-              <span className="dna-bar-count">{t.count}</span>
+            <div key={t.emotion_id} className="dna-bar-row">
+              <span className="dna-dot" style={{ background: em.color, boxShadow: `0 0 6px ${em.color}` }} />
+              <span className="dna-bar-label">{em.label.toLowerCase()}</span>
+              <span className="dna-bar-track">
+                <span className="dna-bar-fill" style={{ width: `${(t.count / maxC) * 100}%`, background: em.color }} />
+              </span>
+              <span className="dna-bar-count">{String(t.count).padStart(2, "0")}</span>
             </div>
           );
         })}
+
         {p.blind_spots?.length > 0 && (
           <div className="dna-blinds">
-            <div className="dna-section-label">BLIND SPOTS</div>
-            {p.blind_spots.map((b, i) => (
-              <div key={i} className="dna-blind">{b}</div>
-            ))}
+            <div className="label-sm">blind spots</div>
+            <div className="dna-blind">{p.blind_spots.join(" · ")}</div>
           </div>
         )}
+
         <div className="dna-footer">
-          <span>bookdna.app</span>
-          <span>@{username}</span>
+          <span>BOOKDNA.APP</span>
+          <span>@{(username || "you").toUpperCase()}</span>
         </div>
       </div>
 
       {allowShare && (
-        <div className="dna-actions" style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'center' }}>
-          <button 
-            className="dna-action-btn" 
-            style={{ 
-              background: 'rgba(255,255,255,0.05)', 
-              border: '1px solid rgba(255,255,255,0.1)',
-              padding: '10px 20px',
-              borderRadius: '20px',
-              color: 'white',
-              cursor: 'pointer'
-            }} 
-            onClick={onSave}
-          >
-            <Camera size={15} style={{ marginRight: 6 }} /> Save Card
+        <div className="dna-actions">
+          <button className="btn brass" onClick={onSave}>
+            <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 16 }}>Save</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.18em" }}>AS IMAGE</span>
           </button>
-          <button 
-            className="dna-action-btn" 
-            style={{ 
-              background: p.color, 
-              border: 'none',
-              padding: '10px 20px',
-              borderRadius: '20px',
-              color: 'white',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              boxShadow: `0 4px 15px ${p.color}40`
-            }} 
-            onClick={handleShareClick}
-          >
-            ✦ Share My DNA
-          </button>
+          <button className="btn ghost" onClick={handleShareClick}>share link →</button>
         </div>
       )}
 
-      <ShareModal 
+      <ShareModal
         isOpen={showShare}
         onClose={() => setShowShare(false)}
         endpoint={shareToken ? `/public/shared/${shareToken}/og` : null}
@@ -115,3 +102,68 @@ const DNACard = forwardRef(function DNACard({ profile, username, allowShare = fa
 });
 
 export default DNACard;
+
+export function DnaReveal({ profile, username, onSave, archetypes = [] }) {
+  if (!profile?.personality) return null;
+  const p = profile.personality;
+  const [first, ...rest] = (p.name || "").split(" ");
+  const second = rest.join(" ");
+  return (
+    <div className="dna-reveal" style={{ "--dc": p.color || "var(--oxblood)" }}>
+      <div className="dna-reveal-grid">
+        <div>
+          <div className="label dna-reveal-eyebrow">· your reading personality has been revealed ·</div>
+          <h1 className="dna-reveal-h1">
+            You are<br />
+            <em>{first} {second}.</em>
+          </h1>
+          <p className="dna-reveal-dek">
+            One of twelve archetypes — drawn from the geometry of your shelf.
+            This is not a quiz result. It's a small portrait of the way you read.
+          </p>
+          {p.pull_quote && (
+            <div className="dna-reveal-pull">
+              “{p.pull_quote}”
+            </div>
+          )}
+          <div className="dna-reveal-cta">
+            <button className="btn brass" onClick={onSave}>
+              <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 16 }}>Save</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.18em" }}>AS IMAGE</span>
+            </button>
+            <span className="dna-reveal-note">regenerates as your shelf grows</span>
+          </div>
+        </div>
+
+        <div className="dna-reveal-cardwrap">
+          <div className="dna-reveal-halo" />
+          <div className="dna-reveal-deck" />
+          <div className="dna-reveal-cardtilt">
+            <DNACard profile={profile} username={username} />
+          </div>
+        </div>
+      </div>
+
+      {archetypes.length > 0 && (
+        <div className="dna-reveal-rail">
+          <div className="label" style={{ marginBottom: 22 }}>· catalog of archetypes ·</div>
+          <div className="dna-reveal-rail-grid">
+            {archetypes.map((x, i) => {
+              const current = x.name === p.name;
+              return (
+                <div key={x.id || i} className={`dna-arch-tile ${current ? "current" : ""}`} style={{ "--ac": x.color }}>
+                  <div className="dna-arch-tile-top">
+                    <div className="label-sm">{String(i + 1).padStart(2, "0")}</div>
+                    <div className="dna-arch-tile-glyph">{x.glyph}</div>
+                  </div>
+                  <div className="dna-arch-tile-name">{x.name}</div>
+                  {x.tagline && <div className="dna-arch-tile-tag">“{x.tagline}”</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

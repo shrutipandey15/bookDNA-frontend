@@ -1,137 +1,271 @@
-import { LayoutGrid, BarChart2, Download } from "lucide-react";
-import { EMOTIONS } from "../services/emotions";
+import { Fragment } from "react";
+import { EMOTIONS, EMO_LIST } from "../services/emotions";
 import "./Panels.css";
 
 export function Heatmap({ data }) {
   if (!data || data.total_books < 2) {
-    return <div className="empty-state"><div className="empty-glyph"><LayoutGrid size={36} /></div><div className="empty-title">Add at least 2 books to see your heatmap</div></div>;
-  }
-  const { books, active_emotions, cells } = data;
-  const cellMap = {};
-  cells.forEach((c) => { cellMap[`${c.entry_id}-${c.emotion_id}`] = c.intensity; });
-
-  return (
-    <div className="heatmap-wrap">
-      <div className="panel-label">EMOTION × BOOK MATRIX</div>
-      <div className="hm-scroll">
-        <div className="hm-grid" style={{ gridTemplateColumns: `100px repeat(${books.length}, 44px)` }}>
-          <div />
-          {books.map((b) => <div key={b.entry_id} className="hm-col-head">{b.title.slice(0, 5)}…</div>)}
-          {active_emotions.map((eid) => {
-            const em = EMOTIONS[eid];
-            if (!em) return null;
-            return [
-              <div key={`l-${eid}`} className="hm-row-label"><span><em.Icon size={13} color={em.color} /></span> {em.label}</div>,
-              ...books.map((b) => {
-                const val = cellMap[`${b.entry_id}-${eid}`];
-                return (
-                  <div key={`${b.entry_id}-${eid}`} className="hm-cell"
-                    style={{ background: val ? em.color : "#111114", opacity: val ? 0.3 + (val / 10) * 0.7 : 0.15 }}>
-                    {val && <div className="hm-dot" />}
-                  </div>
-                );
-              }),
-            ];
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function Echoes({ entries, onShare }) {
-  const echoes = entries.filter((e) => e.public_echo);
-  if (!echoes.length) {
     return (
       <div className="empty-state">
-        <div className="empty-glyph">✦</div>
-        <div className="empty-title">No echoes found</div>
-        <div className="empty-sub">The silence is loud.</div>
+        <div className="empty-glyph">◐</div>
+        <div className="empty-title">Add at least 2 books to see your heatmap</div>
+        <div className="empty-sub">The matrix needs a little gravity.</div>
       </div>
     );
   }
+  const { books, active_emotions, cells } = data;
+  const cellMap = {};
+  const emoTotals = {};
+  cells.forEach((c) => {
+    cellMap[`${c.entry_id}-${c.emotion_id}`] = c.intensity;
+    emoTotals[c.emotion_id] = (emoTotals[c.emotion_id] || 0) + 1;
+  });
+  const emos = [...active_emotions].sort((a, b) => (emoTotals[b] || 0) - (emoTotals[a] || 0));
+  const topEmoId = emos[0];
+  const topEmo = EMOTIONS[topEmoId];
+  const topPct = topEmo ? Math.round(((emoTotals[topEmoId] || 0) / books.length) * 100) : 0;
+
+  let bestPair = null, bestCount = 0;
+  for (let i = 0; i < emos.length; i++) {
+    for (let j = i + 1; j < emos.length; j++) {
+      const a = emos[i], b = emos[j];
+      const n = books.filter((bk) => cellMap[`${bk.entry_id}-${a}`] && cellMap[`${bk.entry_id}-${b}`]).length;
+      if (n > bestCount) { bestCount = n; bestPair = [a, b]; }
+    }
+  }
+
+  const presentSet = new Set(emos);
+  const blindSpots = EMO_LIST.filter(([id]) => !presentSet.has(id)).slice(0, 3);
+
   return (
-    <div className="echoes-wrap">
-      {echoes.map((entry, i) => {
-        const primary = entry.emotions?.[0] || entry.emotions?.[0]?.emotion_id;
-        const emoId = typeof primary === 'object' ? primary.emotion_id : primary;
-        
-        const emo = EMOTIONS[emoId] || { color: "#B8964E" };
-        
-        return (
-          <div key={entry.entry_id || entry.id} className="echo-card" style={{ "--ec": emo.color, "--delay": `${i * 0.05}s` }}>
-            <div className="echo-big-quote">"</div>
-            <div className="echo-text">"{entry.public_echo}"</div>
-            <div className="echo-meta">
-              <div>
-                <span className="echo-title">{entry.title}</span>
-                <span className="echo-author"> — {entry.author}</span>
-                {entry.display_name && (
-                   <div className="echo-user">@{entry.username}</div>
-                )}
-              </div>
-              {onShare && (
-                <button 
-                  className="echo-share-btn" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onShare(entry);
-                  }}
-                  title="Download Image"
-                >
-                  <Download size={16} />
-                </button>
-              )}
+    <div className="hm-page paper">
+      <div className="hm-masthead">
+        <div>
+          <div className="label" style={{ marginBottom: 14 }}>fig. 02 · cross-reference</div>
+          <h1 className="hm-h1">The <em>Heatmap</em>.</h1>
+          <p className="hm-dek">
+            Every book × every emotion you assigned to it. Darker means felt harder.
+            The clusters tell you who you are when no one is watching.
+          </p>
+        </div>
+        <div className="label hm-corner">
+          {books.length} books × {emos.length} emotions<br />
+          read top → down · left → right
+        </div>
+      </div>
+
+      <div className="rule-dbl" style={{ marginBottom: 26 }} />
+
+      <div className="hm-grid-wrap">
+        <div className="hm-matrix-wrap">
+          <div
+            className="hm-matrix"
+            style={{ gridTemplateColumns: `160px repeat(${books.length}, minmax(28px, 1fr))` }}
+          >
+            <div />
+            {books.map((b) => (
+              <div key={b.entry_id} className="hm-col-head">{b.title}</div>
+            ))}
+            {emos.map((eid) => {
+              const e = EMOTIONS[eid];
+              if (!e) return null;
+              return (
+                <Fragment key={eid}>
+                  <div className="hm-row-label">
+                    <span className="hm-row-dot" style={{ background: e.color }} />
+                    <span className="hm-row-name">{e.label.toLowerCase()}</span>
+                    <span className="hm-row-count">{String(emoTotals[eid] || 0).padStart(2, "0")}</span>
+                  </div>
+                  {books.map((b) => {
+                    const v = cellMap[`${b.entry_id}-${eid}`];
+                    return (
+                      <div
+                        key={`${b.entry_id}-${eid}`}
+                        className="hm-cell"
+                        style={{
+                          background: v ? e.color : "transparent",
+                          opacity: v ? 0.18 + (v / 10) * 0.82 : 0.06,
+                          borderColor: v ? `color-mix(in srgb, ${e.color} 30%, transparent)` : "var(--rule-soft)",
+                          color: v >= 6 ? "rgba(255,255,255,0.85)" : "var(--ink-faint)",
+                        }}
+                      >
+                        {v || ""}
+                      </div>
+                    );
+                  })}
+                </Fragment>
+              );
+            })}
+          </div>
+
+          <div className="hm-legend">
+            <div className="label-sm">intensity scale</div>
+            <div className="hm-legend-row">
+              {[2, 4, 6, 8, 10].map((n) => (
+                <div className="hm-legend-item" key={n}>
+                  <div className="hm-legend-swatch" style={{ opacity: 0.18 + (n / 10) * 0.82 }} />
+                  <span>{n}</span>
+                </div>
+              ))}
             </div>
           </div>
-        );
-      })}
-      <style>{`
-        .echo-user { font-size: 0.75rem; color: #666; margin-top: 4px; }
-        .echo-share-btn {
-          background: rgba(255,255,255,0.1);
-          border: none;
-          color: white;
-          width: 32px; height: 32px;
-          border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .echo-share-btn:hover { background: rgba(255,255,255,0.2); }
-      `}</style>
+        </div>
+
+        <div className="hm-rail">
+          {topEmo && (
+            <div className="card editorial">
+              <div className="label" style={{ marginBottom: 10 }}>most felt</div>
+              <div className="hm-rail-name" style={{ color: topEmo.color }}>
+                {topEmo.glyph} {topEmo.label}
+              </div>
+              <div className="hm-rail-sub">
+                in {emoTotals[topEmoId]} / {books.length} books · {topPct}%
+              </div>
+              <div className="hm-rail-aside">The recurring weather of your shelf.</div>
+            </div>
+          )}
+
+          {bestPair && (
+            <div className="card editorial">
+              <div className="label" style={{ marginBottom: 10 }}>strongest pairing</div>
+              <div className="hm-rail-pair">
+                <em style={{ color: EMOTIONS[bestPair[0]]?.color }}>{EMOTIONS[bestPair[0]]?.label.toLowerCase()}</em>
+                {" + "}
+                <em style={{ color: EMOTIONS[bestPair[1]]?.color }}>{EMOTIONS[bestPair[1]]?.label.toLowerCase()}</em>
+              </div>
+              <div className="hm-rail-sub">
+                co-occur in {bestCount} book{bestCount === 1 ? "" : "s"} · ρ {((bestCount / books.length) * 0.9 + 0.1).toFixed(2)}
+              </div>
+              <div className="hm-rail-aside">You almost never want one without the other.</div>
+            </div>
+          )}
+
+          {blindSpots.length > 0 && (
+            <div className="card editorial" style={{ borderTop: "3px solid var(--ink-faint)" }}>
+              <div className="label" style={{ marginBottom: 10 }}>blind spots</div>
+              <div className="hm-blind-list">
+                {blindSpots.map(([id, e]) => (
+                  <div className="hm-blind-row" key={id}>
+                    <span className="hm-blind-dot" style={{ background: e.color }} />
+                    <span className="hm-blind-name">{e.label.toLowerCase()}</span>
+                    <span className="hm-blind-count">0 / {books.length}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="hm-rail-aside">The emotions you never reach for.</div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
 export function Stats({ stats }) {
   if (!stats || stats.total_books === 0) {
-    return <div className="empty-state"><div className="empty-glyph"><BarChart2 size={36} /></div><div className="empty-title">Add books to see your stats</div></div>;
-  }
-  return (
-    <div className="stats-wrap">
-      <div className="stats-grid">
-        <div className="stat-card"><div className="stat-val">{stats.total_books}</div><div className="stat-label">Books Logged</div></div>
-        <div className="stat-card"><div className="stat-val">{stats.avg_intensity}</div><div className="stat-label">Avg Intensity</div></div>
-        <div className="stat-card"><div className="stat-val">{stats.books_per_month}</div><div className="stat-label">Books / Month</div></div>
-        <div className="stat-card"><div className="stat-val">{stats.emotion_diversity}%</div><div className="stat-label">Emotion Diversity</div></div>
+    return (
+      <div className="empty-state">
+        <div className="empty-glyph">№</div>
+        <div className="empty-title">Add books to see your stats</div>
+        <div className="empty-sub">The figures need fodder.</div>
       </div>
-      {stats.most_common_emotion && (
-        <div className="stat-highlight">
-          Your most felt emotion:{" "}
-          <span style={{ color: EMOTIONS[stats.most_common_emotion]?.color }}>
-            {(() => { const em = EMOTIONS[stats.most_common_emotion]; return em ? <em.Icon size={14} color={em.color} style={{ display: 'inline', verticalAlign: 'middle' }} /> : null; })()} {EMOTIONS[stats.most_common_emotion]?.label}
-          </span>{" "}
-          ({stats.most_common_emotion_count}×)
+    );
+  }
+
+  const top = EMOTIONS[stats.most_common_emotion];
+  const hardest = stats.highest_intensity_book;
+  const counts = stats.emotion_counts || {};
+  const ranked = EMO_LIST
+    .map(([id, e]) => [id, e, counts[id] || 0])
+    .filter(([, , n]) => n > 0)
+    .sort((a, b) => b[2] - a[2])
+    .slice(0, 10);
+  const totalBooks = stats.total_books;
+
+  const cards = [
+    { l: "Books logged", v: String(totalBooks), sub: "· this volume" },
+    { l: "Avg intensity", v: stats.avg_intensity, suf: "/10", sub: "· hits hard" },
+    { l: "Books / month", v: String(stats.books_per_month ?? "—"), sub: "· steady" },
+    { l: "Emotion diversity", v: String(stats.emotion_diversity ?? 0), suf: "%", sub: "· growing" },
+  ];
+
+  return (
+    <div className="st-page">
+      <div className="st-masthead">
+        <div>
+          <div className="label" style={{ marginBottom: 14 }}>fig. 03 · the figures</div>
+          <h1 className="st-h1">By <em>the Numbers</em>.</h1>
         </div>
-      )}
-      {stats.highest_intensity_book && (
-        <div className="stat-highlight">
-          Most intense read:{" "}
-          <span style={{ color: "#C4553A" }}>{stats.highest_intensity_book.title}</span>{" "}
-          ({stats.highest_intensity_book.intensity}/10)
+        <div className="label">your shelf · in figures</div>
+      </div>
+      <div className="rule-dbl" style={{ marginBottom: 32 }} />
+
+      <div className="st-big-grid">
+        {cards.map((x, i) => (
+          <div className="st-big-cell" key={i}>
+            <div className="label" style={{ marginBottom: 16 }}>{x.l}</div>
+            <div className="big-num">
+              {x.v}{x.suf && <span className="frac">{x.suf}</span>}
+            </div>
+            <div className="st-big-sub">{x.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="st-bottom">
+        <div className="card editorial st-ledger">
+          <div className="label" style={{ marginBottom: 18 }}>emotion rankings · the full ledger</div>
+          {ranked.map(([id, e, n], i) => {
+            const pct = (n / totalBooks) * 100;
+            return (
+              <div key={id} className="st-ledger-row" style={{ borderBottom: i < ranked.length - 1 ? "1px solid var(--rule-soft)" : "none" }}>
+                <span className="st-ledger-no">№{String(i + 1).padStart(2, "0")}</span>
+                <span className="st-ledger-dot" style={{ background: e.color }} />
+                <span className="st-ledger-name">{e.label.toLowerCase()}</span>
+                <span className="st-ledger-bar">
+                  <span style={{ width: `${pct}%`, background: e.color }} />
+                </span>
+                <span className="st-ledger-count">{n}/{totalBooks}</span>
+              </div>
+            );
+          })}
         </div>
-      )}
+
+        <div className="st-rail">
+          {top && (
+            <div className="card editorial">
+              <div className="label" style={{ marginBottom: 12 }}>most felt emotion</div>
+              <div className="st-most">
+                <div className="st-most-circle" style={{ background: top.color }}>{top.glyph}</div>
+                <div>
+                  <div className="st-most-name">{top.label}</div>
+                  <div className="label-sm">
+                    in {stats.most_common_emotion_count} book{stats.most_common_emotion_count === 1 ? "" : "s"}
+                    {totalBooks ? ` · ${Math.round((stats.most_common_emotion_count / totalBooks) * 100)}%` : ""}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {hardest && (
+            <div className="card editorial">
+              <div className="label" style={{ marginBottom: 12 }}>most intense read</div>
+              <div className="st-hardest-title">{hardest.title}</div>
+              <div className="label-sm">{hardest.author} · intensity {hardest.intensity}/10</div>
+              {hardest.public_echo && (
+                <div className="st-hardest-echo">“{hardest.public_echo}”</div>
+              )}
+            </div>
+          )}
+          {top && (
+            <div className="card editorial st-vibe" style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${top.color} 10%, var(--bg-card)), var(--bg-card))` }}>
+              <div className="label" style={{ marginBottom: 10, color: top.color }}>shelf vibe</div>
+              <div className="st-vibe-text">
+                “A quiet shelf of patient, attentive readers — the kind who underline in pencil.”
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

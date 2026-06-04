@@ -1,15 +1,46 @@
 import { useState } from "react";
-import { CheckCircle } from "lucide-react";
 import { useSearchParams, Link } from "react-router-dom";
 import "./ResetPassword.css";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
+const STEPS = [
+  { n: "01", t: "Find you",       d: "Tell us the email tied to your shelf." },
+  { n: "02", t: "Check your mail", d: "We'll send a single-use link. Valid for one hour." },
+  { n: "03", t: "Write a new key", d: "Choose a password worth the shelf it opens." },
+];
+
+function Wordmark() {
+  return <div className="rp-wordmark">Book&nbsp;<em>DNA</em></div>;
+}
+
+function Triptych({ activeIdx, children }) {
+  return (
+    <div className="rp-page">
+      <div className="rp-card">
+        <div className="rp-card-head">
+          <Wordmark />
+          <div className="label">· reset password ·</div>
+        </div>
+        <div className="rule-dbl" style={{ marginBottom: 28 }} />
+        <div className="rp-triptych">
+          {STEPS.map((s, i) => (
+            <div key={s.n} className={`rp-col ${i === activeIdx ? "active" : "dim"}`}>
+              <div className="rp-col-num">{s.n}</div>
+              <h3 className="rp-col-t">{s.t}</h3>
+              <p className="rp-col-d">{s.d}</p>
+              {i === activeIdx && <div className="rp-col-body">{children}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ResetPasswordPage() {
   const [params] = useSearchParams();
   const token = params.get("token");
-
-  // If token is present → reset form. If not → forgot form.
   return token ? <ResetForm token={token} /> : <ForgotForm />;
 }
 
@@ -21,66 +52,57 @@ function ForgotForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
       const res = await fetch(`${API_BASE}/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      if (res.ok) {
-        setSent(true);
-      } else {
+      if (res.ok) setSent(true);
+      else {
         const data = await res.json().catch(() => ({}));
         setError(data.detail || "Something went wrong.");
       }
-    } catch {
-      setError("Could not reach the server.");
-    }
+    } catch { setError("Could not reach the server."); }
     setLoading(false);
   };
 
   if (sent) {
     return (
-      <div className="reset-page">
-        <div className="reset-card">
-          <div className="reset-logo">BOOK <span>DNA</span></div>
-          <div className="reset-glyph success"><CheckCircle size={40} /></div>
-          <div className="reset-title">Check your email</div>
-          <div className="reset-sub">If that email is registered, you'll receive a reset link within a few minutes.</div>
-          <Link to="/" className="reset-btn">Back to Login</Link>
-        </div>
-      </div>
+      <Triptych activeIdx={1}>
+        <div className="rp-success-glyph">✦</div>
+        <p className="rp-success-text">
+          If that email is in our ledger, a reset link is on its way.
+        </p>
+        <Link to="/" className="btn ghost rp-back">back to login</Link>
+      </Triptych>
     );
   }
 
   return (
-    <div className="reset-page">
-      <div className="reset-card">
-        <div className="reset-logo">BOOK <span>DNA</span></div>
-        <div className="reset-title">Forgot Password</div>
-        <div className="reset-sub">Enter your email and we'll send you a reset link.</div>
-
-        <form onSubmit={handleSubmit} className="reset-form">
-          <input
-            type="email"
-            placeholder="your@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="reset-input"
-            autoComplete="email"
-          />
-          {error && <div className="reset-error">{error}</div>}
-          <button type="submit" disabled={loading} className="reset-submit">
-            {loading ? "Sending..." : "Send Reset Link"}
-          </button>
-        </form>
-
-        <Link to="/" className="reset-back">← Back to login</Link>
-      </div>
-    </div>
+    <Triptych activeIdx={0}>
+      <form onSubmit={handleSubmit}>
+        <div className="label-sm rp-field-label">email</div>
+        <input
+          className="rp-input"
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
+        {error && <div className="rp-error">{error}</div>}
+        <button type="submit" disabled={loading} className="btn brass rp-submit">
+          <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 16 }}>
+            {loading ? "Sending" : "Send"}
+          </span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.18em" }}>RESET LINK</span>
+        </button>
+        <Link to="/" className="rp-link-italic">← back to login</Link>
+      </form>
+    </Triptych>
   );
 }
 
@@ -93,80 +115,67 @@ function ResetForm({ token }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password !== confirm) {
-      setError("Passwords don't match.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-    setLoading(true);
-    setError("");
+    if (password !== confirm) { setError("Passwords don't match."); return; }
+    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
+    setLoading(true); setError("");
     try {
       const res = await fetch(`${API_BASE}/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, new_password: password }),
       });
-      if (res.ok) {
-        setDone(true);
-      } else {
+      if (res.ok) setDone(true);
+      else {
         const data = await res.json().catch(() => ({}));
         setError(data.detail || "Reset failed.");
       }
-    } catch {
-      setError("Could not reach the server.");
-    }
+    } catch { setError("Could not reach the server."); }
     setLoading(false);
   };
 
   if (done) {
     return (
-      <div className="reset-page">
-        <div className="reset-card">
-          <div className="reset-logo">BOOK <span>DNA</span></div>
-          <div className="reset-glyph success"><CheckCircle size={40} /></div>
-          <div className="reset-title">Password Updated</div>
-          <div className="reset-sub">You can now log in with your new password.</div>
-          <Link to="/" className="reset-btn">Go to Login</Link>
-        </div>
-      </div>
+      <Triptych activeIdx={2}>
+        <div className="rp-success-glyph">◈</div>
+        <p className="rp-success-text">Password rewritten. The shelf is yours again.</p>
+        <Link to="/" className="btn brass rp-submit">
+          <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 16 }}>Sign</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.18em" }}>IN</span>
+        </Link>
+      </Triptych>
     );
   }
 
   return (
-    <div className="reset-page">
-      <div className="reset-card">
-        <div className="reset-logo">BOOK <span>DNA</span></div>
-        <div className="reset-title">Set New Password</div>
-
-        <form onSubmit={handleSubmit} className="reset-form">
-          <input
-            type="password"
-            placeholder="New password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="reset-input"
-            autoComplete="new-password"
-            minLength={8}
-          />
-          <input
-            type="password"
-            placeholder="Confirm password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            required
-            className="reset-input"
-            autoComplete="new-password"
-          />
-          {error && <div className="reset-error">{error}</div>}
-          <button type="submit" disabled={loading} className="reset-submit">
-            {loading ? "Updating..." : "Reset Password"}
-          </button>
-        </form>
-      </div>
-    </div>
+    <Triptych activeIdx={2}>
+      <form onSubmit={handleSubmit}>
+        <div className="label-sm rp-field-label">new password</div>
+        <input
+          className="rp-input"
+          type="password"
+          placeholder="min 8 characters"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required minLength={8}
+          autoComplete="new-password"
+        />
+        <div className="label-sm rp-field-label" style={{ marginTop: 14 }}>confirm</div>
+        <input
+          className="rp-input"
+          type="password"
+          placeholder="and again"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          required autoComplete="new-password"
+        />
+        {error && <div className="rp-error">{error}</div>}
+        <button type="submit" disabled={loading} className="btn brass rp-submit">
+          <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 16 }}>
+            {loading ? "Writing" : "Write"}
+          </span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.18em" }}>NEW KEY</span>
+        </button>
+      </form>
+    </Triptych>
   );
 }

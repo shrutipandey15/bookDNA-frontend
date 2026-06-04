@@ -1,98 +1,115 @@
-.pp-main {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40px 20px;
-  min-height: 80vh;
+/* ============================================================
+   PublicProfile — Reading Room
+   ============================================================ */
+
+.pp-page {
+  background: var(--bg-page);
+  min-height: 100vh;
+  color: var(--ink);
 }
 
-.pp-label {
-  font-family: var(--font-serif, "Cormorant Garamond", serif);
-  font-size: 14px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #888;
-  margin-bottom: 24px;
-}
-
-/* Error state */
-.pp-error {
+.pp-header {
+  padding: 22px 56px;
+  border-bottom: 1px solid var(--rule);
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  height: 100vh;
-  text-align: center;
-  padding: 20px;
 }
-.pp-error-glyph {
-  font-size: 48px;
-  color: #333;
-  margin-bottom: 16px;
-}
-.pp-error-title {
-  font-family: var(--font-serif, "Cormorant Garamond", serif);
-  font-size: 22px;
-  color: #e0ddd8;
-  margin-bottom: 8px;
-}
-.pp-error-sub {
-  color: #666;
-  font-size: 13px;
-  margin-bottom: 24px;
-}
-.pp-home-btn {
-  padding: 10px 24px;
-  border-radius: 8px;
-  background: rgba(184,150,78,0.12);
-  border: 1px solid rgba(184,150,78,0.25);
-  color: #B8964E;
+.pp-brand {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--ink);
   text-decoration: none;
-  font-size: 13px;
-  font-family: var(--font-mono, monospace);
-  transition: all 0.2s;
 }
-.pp-home-btn:hover {
-  background: rgba(184,150,78,0.2);
+.pp-brand em { color: var(--oxblood); font-style: italic; }
+
+.pp-main {
+  padding: 48px 56px 80px;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
-/* Echoes section */
-.pp-echoes {
-  max-width: 500px;
-  width: 100%;
-  margin-top: 40px;
+.pp-bio {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 32px;
+  align-items: flex-start;
 }
-.pp-echoes-title {
-  font-family: var(--font-serif, "Cormorant Garamond", serif);
-  font-size: 14px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #555;
-  margin-bottom: 16px;
-  text-align: center;
+.pp-avatar {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 56px;
+  color: #f5ecd2;
+  border: 3px solid var(--bg-card);
+  box-shadow: var(--shadow-md);
 }
-.pp-echo {
-  padding: 16px;
-  margin-bottom: 12px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.04);
-  border-radius: 10px;
-}
-.pp-echo-book {
-  font-family: var(--font-serif, "Cormorant Garamond", serif);
-  font-size: 15px;
-  color: #e0ddd8;
-  margin-bottom: 6px;
-}
-.pp-echo-text {
-  color: #999;
-  font-size: 13px;
-  font-style: italic;
-  line-height: 1.5;
+.pp-h1 {
+  font-size: 48px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1;
   margin-bottom: 4px;
 }
-.pp-echo-author {
-  color: #555;
+.pp-handle {
+  font-family: var(--font-mono);
   font-size: 11px;
-  text-align: right;
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.pp-bio-text {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 17px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+  padding-left: 14px;
+  margin-bottom: 22px;
+  max-width: 600px;
+}
+.pp-stats {
+  display: flex;
+  gap: 32px;
+}
+.pp-stat .pp-stat-val {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.pp-section { margin-bottom: 48px; }
+
+.pp-echoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+}
+.pp-echo { padding: 22px; }
+.pp-echo-quote {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 18px;
+  line-height: 1.3;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+.pp-echo-foot { display: flex; justify-content: space-between; align-items: baseline; }
+.pp-echo-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .pp-header { padding: 18px 22px; }
+  .pp-main { padding: 32px 22px 60px; }
+  .pp-bio { grid-template-columns: 1fr; }
+  .pp-avatar { width: 80px; height: 80px; font-size: 36px; }
+  .pp-h1 { font-size: 32px; }
 }
