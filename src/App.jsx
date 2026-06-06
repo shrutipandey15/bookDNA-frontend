@@ -9,7 +9,7 @@ import AuthPage from "./pages/AuthPage";
 import BookCard from "./components/BookCard";
 import EmptyShelf from "./components/EmptyShelf";
 import EntryModal from "./components/EntryModal";
-import DNACard from "./components/DNACard";
+import DNACard, { DnaReveal } from "./components/DNACard";
 import LandingPage from "./pages/LandingPage";
 import { Heatmap, Stats } from "./components/Panels";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -460,31 +460,25 @@ function Dashboard() {
             : <Stats stats={analytics.stats} />
         )}
 
-        {tab === "dna" && (
-          <ErrorBoundary name="DNA">
-            <div className="dna-section">
-              {analytics.profile?.personality ? (
-                <>
-                  <div className="dna-reveal-label">Your Reading Personality</div>
-                  <DNACard
-                    ref={dnaCardRef}
-                    profile={analytics.profile}
-                    username={user?.username}
-                    allowShare={true}
-                    onSave={handleSaveCard}
-                  />
-                </>
-              ) : (
-                <div className="empty-state">
-                  <div className="empty-glyph">◈</div>
-                  <div className="empty-title">Not enough data yet</div>
-                  <div className="empty-sub">Shelve {Math.max(0, 3 - entries.length)} more book{3 - entries.length === 1 ? "" : "s"} to reveal your DNA.</div>
-                  <button className="back-btn" onClick={() => setTab("shelf")}>← back to shelf</button>
-                </div>
-              )}
-            </div>
-          </ErrorBoundary>
-        )}
+{tab === "dna" && (
+  <ErrorBoundary name="DNA">
+    {analytics.profile?.personality ? (
+      <DnaReveal
+        profile={analytics.profile}
+        username={user?.username}
+        onSave={handleSaveCard}
+        archetypes={analytics.archetypes || []}
+      />
+    ) : (
+      <div className="empty-state">
+        <div className="empty-glyph">◈</div>
+        <div className="empty-title">Not enough data yet</div>
+        <div className="empty-sub">Shelve {Math.max(0, 3 - entries.length)} more book{3 - entries.length === 1 ? "" : "s"} to reveal your DNA.</div>
+        <button className="back-btn" onClick={() => setTab("shelf")}>← back to shelf</button>
+      </div>
+    )}
+  </ErrorBoundary>
+)}
       </main>
 
       {modal && (
