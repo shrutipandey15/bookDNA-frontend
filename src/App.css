@@ -447,7 +447,29 @@
   .rr-cover-grid { grid-template-columns: repeat(2, 1fr); gap: 28px 16px; }
   .rr-logo { font-size: 28px; }
   .rr-actions { flex-wrap: wrap; }
-  .rr-modal-backdrop { padding: 12px; }
+
+  /* Modals become bottom sheets on mobile — docked to the bottom, full-width,
+     thumb-reachable, slide-up. [F2.9 / P5-9] */
+  .rr-modal-backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .modal-card.rr-modal-card {
+    max-width: 100%;
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 18px 18px 0 0;
+    transform-origin: bottom center;
+    animation: sheet-up 0.32s cubic-bezier(.16, 1, .3, 1) both;
+  }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-card.rr-modal-card { animation-duration: 0.001ms; }
 }
 
 /* In-library search [F2.7 / B2.9] */

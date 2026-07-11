@@ -10,13 +10,24 @@ export function SpineBook({ entry, onClick, lean = null, hideTitle = false, inde
   const spineColor = primary.color || "#6b3a5d";
   const bands = w > 30 ? "double" : w > 20 ? "single" : "none";
 
+  // Keyboard parity + a real label: narrow spines show no inline text, so the
+  // only sighted affordance was the hover `title` tooltip (dead on touch, invisible
+  // to keyboard/SR users). role=button needs focus + Enter/Space to be operable. [F2.9 / P5-9]
+  const label = entry.author ? `${entry.title} · ${entry.author}` : entry.title;
+  const activate = () => onClick && onClick();
+
   return (
     <div
       className="book-spine"
       role="button"
+      tabIndex={0}
+      aria-label={label}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activate(); }
+      }}
       data-lean={lean}
-      title={`${entry.title} · ${entry.author}`}
+      title={label}
       style={{
         height: `${h}px`,
         width: `${w}px`,

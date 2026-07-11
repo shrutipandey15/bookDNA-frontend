@@ -1,0 +1,30 @@
+/* First-run welcome [F2.10] */
+.wel { display: flex; flex-direction: column; gap: 16px; padding: 36px; max-width: 480px; }
+.wel-eyebrow { color: var(--ink-quiet); }
+.wel-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 1.12;
+  color: var(--ink);
+  margin: 0;
+}
+.wel-title em { font-style: italic; color: var(--brass); }
+.wel-body {
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink-quiet);
+  margin: 0;
+}
+.wel-body strong { color: var(--ink); }
+.wel-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+@media (max-width: 560px) {
+  .wel { padding: 24px; }
+  .wel-title { font-size: 26px; }
+}

@@ -15,6 +15,7 @@ import FinishFlow from "./components/FinishFlow";
 import CheckinPanel from "./components/CheckinPanel";
 import MirrorCard from "./components/MirrorCard";
 import ImportModal from "./components/ImportModal";
+import WelcomeModal from "./components/WelcomeModal";
 import DNACard, { DnaReveal } from "./components/DNACard";
 import LandingPage from "./pages/LandingPage";
 import { Heatmap, Stats } from "./components/Panels";
@@ -346,6 +347,15 @@ function Dashboard() {
   const [finishTarget, setFinishTarget] = useState(null);
   const [checkinTarget, setCheckinTarget] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  // First-run welcome: shown once (localStorage-gated), only to a brand-new user
+  // with an empty shelf. [F2.10]
+  const [showWelcome, setShowWelcome] = useState(() => {
+    try { return !localStorage.getItem("bookdna_onboarded"); } catch { return false; }
+  });
+  const dismissWelcome = () => {
+    try { localStorage.setItem("bookdna_onboarded", "1"); } catch { /* ignore */ }
+    setShowWelcome(false);
+  };
   const [filterEmotion, setFilterEmotion] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date");
@@ -566,6 +576,20 @@ function Dashboard() {
           backdropClassName="rr-modal-backdrop"
         >
           <ImportModal onClose={() => setShowImport(false)} onImported={loadEntries} />
+        </Modal>
+      )}
+
+      {showWelcome && !loading && entries.length === 0 && (
+        <Modal
+          onClose={dismissWelcome}
+          ariaLabel="Welcome to BookDNA"
+          className="rr-modal-card"
+          backdropClassName="rr-modal-backdrop"
+        >
+          <WelcomeModal
+            onBegin={() => { dismissWelcome(); setModal("new"); }}
+            onDismiss={dismissWelcome}
+          />
         </Modal>
       )}
 

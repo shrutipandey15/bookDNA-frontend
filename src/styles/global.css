@@ -372,6 +372,11 @@ button, a, [role="button"] { touch-action: manipulation; }
   filter: brightness(1.08);
   z-index: 4;
 }
+.book-spine:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 3px;
+  z-index: 5;
+}
 .book-spine[data-lean="left"]  { transform: rotate(-3.5deg) translateX(-1px); }
 .book-spine[data-lean="right"] { transform: rotate(3.5deg) translateX(1px); }
 .book-spine[data-lean="hard"]  { transform: rotate(-7deg) translateY(-2px); }
