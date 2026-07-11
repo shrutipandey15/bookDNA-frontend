@@ -4,7 +4,7 @@ import { Routes, Route, useParams, Link, useNavigate, Navigate, Outlet, useSearc
 import { useAuth } from "./contexts/AuthContext";
 import { useJournal, JournalProvider } from "./contexts/JournalContext";
 import { saveCardAsImage } from "./utils/cardUtils";
-import { getSharedDNA } from "./services/api";
+import { getSharedDNA, getEmotionVocab } from "./services/api";
 import AuthPage from "./pages/AuthPage";
 import BookCard from "./components/BookCard";
 import EmptyShelf from "./components/EmptyShelf";
@@ -17,7 +17,7 @@ import { Heatmap, Stats } from "./components/Panels";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Shelf from "./components/Shelf";
 import { ShelfDecoration } from "./components/Shelf";
-import { EMO_LIST, EMOTIONS, getPrimaryEmotion } from "./services/emotions";
+import { EMO_LIST, EMOTIONS, getPrimaryEmotion, hydrateEmotions } from "./services/emotions";
 import { clearCache } from "./services/offline";
 import "./App.css";
 
@@ -530,7 +530,14 @@ const RouteLoader = () => (
 export default function App() {
   const { authed, loading } = useAuth();
   const navigate = useNavigate();
-  
+
+  // Pull the canonical emotion vocabulary from the server once at boot so labels
+  // and colors can never drift from the backend. Best-effort: the local seed is
+  // already canonical, so a failure just leaves the seed in place. [F1.5 / B2.10]
+  useEffect(() => {
+    getEmotionVocab().then(hydrateEmotions).catch(() => {});
+  }, []);
+
   if (loading) return <RouteLoader />;
 
   return (

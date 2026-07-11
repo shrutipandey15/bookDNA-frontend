@@ -323,6 +323,13 @@ export async function changePassword(currentPassword, newPassword) {
   return res.json();
 }
 
+// ── Shared emotion vocabulary (B2.10 / P2-9) ──
+// The canonical vocabulary, served so the client never diverges from the server.
+// Public + unauthenticated; safe to call before login.
+export async function getEmotionVocab() {
+  return apiGet("/emotions");
+}
+
 // ── Book Search ──
 export async function searchBooks(query) {
   if (!query || query.length < 2) return [];
