@@ -20,6 +20,9 @@ export function JournalProvider({ children }) {
   const [shareToken, setShareToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  // Distinguishes a genuine failure (429/500/offline) from an empty shelf so the
+  // UI can show an honest error instead of "no books yet". null = no error. [F1.2]
+  const [entriesError, setEntriesError] = useState(null);
 
   // Fetches entries + profile. Called on mount and on visibility restore.
   const loadEntries = useCallback(async () => {
@@ -32,18 +35,27 @@ export function JournalProvider({ children }) {
     }
 
     try {
-      const [eData, prof] = await Promise.all([getEntries(), getDNAProfile()]);
-      if (eData?.entries) {
-        setEntries(eData.entries);
-        setCachedEntries(eData.entries);
-      }
+      const eData = await getEntries();
+      setEntries(eData.entries || []);
+      setCachedEntries(eData.entries || []);
+      setEntriesError(null);
+    } catch (err) {
+      // Only surface the error when we have nothing to show. If cached entries
+      // are on screen, keep them and stay silent rather than clobbering the shelf.
+      console.error("Entries load failed:", err);
+      if (!cached) setEntriesError(err.kind ? err : { kind: "server", status: err.status });
+    }
+
+    // Profile is secondary; its absence is an honest "not enough yet", not an error.
+    try {
+      const prof = await getDNAProfile();
       if (prof) {
         setAnalytics(prev => ({ ...prev, profile: prof }));
         if (prof.share_token) setShareToken(prof.share_token);
         setStale(prev => ({ ...prev, profile: false }));
       }
     } catch (err) {
-      console.error("Data load failed:", err);
+      console.error("Profile load failed:", err);
     }
     setLoading(false);
   }, []);
@@ -194,7 +206,7 @@ export function JournalProvider({ children }) {
   return (
     <JournalContext.Provider value={{
       entries, analytics, stale, shareToken,
-      loading, generating,
+      loading, generating, entriesError,
       addEntry, editEntry, removeEntry, generate, createToken,
       ensureFresh, loadEntries,
     }}>

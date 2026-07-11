@@ -1,4 +1,38 @@
+import { clearCache } from "./offline";
+
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
+
+// Typed error so callers can tell *why* a fetch failed (rate-limited vs. server
+// error vs. offline) instead of collapsing every failure into an empty result.
+// `kind` is a stable, UI-friendly discriminant. [F1.2 / P5-2]
+export class ApiError extends Error {
+  constructor(status, kind, message) {
+    super(message || kind);
+    this.name = "ApiError";
+    this.status = status;
+    this.kind = kind; // "rate_limited" | "server" | "offline" | "client"
+  }
+}
+
+export function errorKind(status) {
+  if (status === 429) return "rate_limited";
+  if (status >= 500) return "server";
+  if (status >= 400) return "client";
+  return "server";
+}
+
+// Wrap apiFetch and reject with a typed ApiError on failure. Network failures
+// (fetch throws) become an "offline" ApiError.
+async function apiGet(path) {
+  let res;
+  try {
+    res = await apiFetch(path);
+  } catch {
+    throw new ApiError(0, "offline", "Network request failed");
+  }
+  if (!res.ok) throw new ApiError(res.status, errorKind(res.status));
+  return res.json();
+}
 
 // ── Token management ──
 export function getTokens() {
@@ -15,10 +49,43 @@ export function saveTokens(tokens) {
 
 export function clearTokens() {
   localStorage.removeItem("bookdna_tokens");
+  // A cleared session must never leave one account's cached shelf visible to
+  // the next user. clearTokens is the single choke point every logout path
+  // hits (explicit logout, invalid-token load, failed refresh). [F1.4 / P5-3]
+  clearCache();
 }
 
 export function isAuthed() {
   return !!getTokens()?.access_token;
+}
+
+// ── Single-flight token refresh ──
+// A rotating refresh token can only be redeemed once. If several requests 401 at
+// the same time and each POSTs /auth/refresh, all but the first redeem a stale
+// token, the backend revokes the session, and the user is logged out at random.
+// We funnel every concurrent refresh through one shared promise so exactly one
+// /auth/refresh fires per stampede. [F1.1 / P2-11]
+let refreshPromise = null;
+
+async function doRefresh(refreshToken) {
+  const res = await fetch(`${API_BASE}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!res.ok) throw new Error("refresh_failed");
+  const newTokens = await res.json();
+  saveTokens(newTokens);
+  return newTokens;
+}
+
+function refreshOnce(refreshToken) {
+  if (!refreshPromise) {
+    refreshPromise = doRefresh(refreshToken).finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
 }
 
 // ── Core fetch wrapper with auto-refresh ──
@@ -36,22 +103,16 @@ export async function apiFetch(path, opts = {}) {
 
   const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
 
-  // Auto-refresh on 401
+  // Auto-refresh on 401 (single-flight; retry once with the fresh token)
   if (res.status === 401 && tokens?.refresh_token && !opts._retried) {
-    const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: tokens.refresh_token }),
-    });
-
-    if (refreshRes.ok) {
-      const newTokens = await refreshRes.json();
-      saveTokens(newTokens);
-      return apiFetch(path, { ...opts, _retried: true });
-    } else {
+    try {
+      await refreshOnce(tokens.refresh_token);
+    } catch {
       clearTokens();
-      window.location.href = "/";
+      if (typeof window !== "undefined") window.location.href = "/";
+      return res;
     }
+    return apiFetch(path, { ...opts, _retried: true });
   }
 
   return res;
@@ -99,9 +160,9 @@ export async function getMe() {
 
 // ── Entries ──
 export async function getEntries(page = 1, perPage = 100) {
-  const res = await apiFetch(`/entries?page=${page}&per_page=${perPage}`);
-  if (!res.ok) return { entries: [], total: 0 };
-  return res.json();
+  // Throws ApiError on failure so an empty shelf (real) is never confused with a
+  // 500/429 (an error the user must see). [F1.2 / P5-2]
+  return apiGet(`/entries?page=${page}&per_page=${perPage}`);
 }
 
 export async function createEntry(data) {

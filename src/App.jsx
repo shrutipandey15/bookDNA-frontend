@@ -8,6 +8,7 @@ import { getSharedDNA } from "./services/api";
 import AuthPage from "./pages/AuthPage";
 import BookCard from "./components/BookCard";
 import EmptyShelf from "./components/EmptyShelf";
+import ShelfError from "./components/ShelfError";
 import EntryModal from "./components/EntryModal";
 import DNACard, { DnaReveal } from "./components/DNACard";
 import LandingPage from "./pages/LandingPage";
@@ -103,7 +104,7 @@ function buildDashboardStats(entries) {
     const span = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24 * 30);
     perMonth = span > 0 ? +(total / span).toFixed(1) : total;
   }
-  return { total, avg, topEmotion, perMonth, streak: Math.min(12, Math.max(1, Math.ceil(total / 2))) };
+  return { total, avg, topEmotion, perMonth };
 }
 
 function ReadingRoomHeader({ user, tab, onTab, theme, onToggleTheme, onAddBook, onRevealDNA, canGenerate, generating, navigate, entriesCount }) {
@@ -220,7 +221,6 @@ function ReadingRoomStatStrip({ stats }) {
     { l: "avg intensity",  v: stats.avg, suf: "/10" },
     { l: "top emotion",    v: top.label, color: top.color },
     { l: "books / month",  v: typeof stats.perMonth === "number" ? stats.perMonth.toFixed(1) : stats.perMonth },
-    { l: "reading streak", v: `${stats.streak} mo` },
   ];
   return (
     <div className="rr-statstrip">
@@ -306,8 +306,8 @@ function Dashboard() {
   const { user } = useAuth();
   const {
     entries, analytics, stale,
-    loading, generating,
-    addEntry, editEntry, removeEntry, generate, ensureFresh
+    loading, generating, entriesError,
+    addEntry, editEntry, removeEntry, generate, ensureFresh, loadEntries
   } = useJournal();
 
   const navigate = useNavigate();
@@ -390,7 +390,9 @@ function Dashboard() {
       <main>
         {tab === "shelf" && (
           <ErrorBoundary name="Shelf">
-            {entries.length === 0 ? (
+            {entriesError && entries.length === 0 ? (
+              <ShelfError error={entriesError} onRetry={loadEntries} />
+            ) : entries.length === 0 ? (
               <EmptyShelf onAddClick={() => setModal("new")} />
             ) : (
               <>

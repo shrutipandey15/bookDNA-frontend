@@ -95,7 +95,7 @@ export default function AuthPage() {
           </h1>
           <p className="auth-rr-dek">
             {isLogin
-              ? "Three new echoes since you left. Your reading streak is intact. A book has been pulled from the catalog and is waiting on your desk."
+              ? "Your shelf is where you left it — a private record of what books did to you, and the portrait they add up to."
               : "A slow, small ritual. Log what books did to you — not ratings, but the actual weather. We'll map the patterns into a portrait of who you've become as a reader."}
           </p>
 
