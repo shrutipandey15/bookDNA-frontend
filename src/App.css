@@ -449,3 +449,32 @@
   .rr-actions { flex-wrap: wrap; }
   .rr-modal-backdrop { padding: 12px; }
 }
+
+/* In-library search [F2.7 / B2.9] */
+.rr-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--rule, rgba(0,0,0,0.15));
+  border-radius: 999px;
+  background: var(--bg-vellum);
+  margin-right: 8px;
+}
+.rr-search:focus-within { border-color: var(--brass); }
+.rr-search-glyph { color: var(--ink-quiet); font-size: 14px; }
+.rr-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--ink);
+  width: 160px;
+}
+.rr-search-input::placeholder { color: var(--ink-faint, var(--ink-quiet)); font-style: italic; }
+
+@media (max-width: 640px) {
+  .rr-search { width: 100%; margin-right: 0; margin-bottom: 8px; }
+  .rr-search-input { width: 100%; }
+}

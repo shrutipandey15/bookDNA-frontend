@@ -14,7 +14,7 @@ const AFTER_STEPS = [
   { n: "03", t: "You shelve it",       d: "Three books = DNA. Five = patterns. Ten = portrait." },
 ];
 
-export default function EmptyShelf({ onAddClick }) {
+export default function EmptyShelf({ onAddClick, onImport }) {
   return (
     <div className="es-page">
       <div className="es-grid">
@@ -37,6 +37,15 @@ export default function EmptyShelf({ onAddClick }) {
           <div className="es-search-note">
             we'll search Google Books, Open Library, and the catalog at once.
           </div>
+
+          {onImport && (
+            <div className="es-import-note">
+              already have a library elsewhere?{" "}
+              <button type="button" className="es-import-link" onClick={onImport}>
+                import from Goodreads or StoryGraph →
+              </button>
+            </div>
+          )}
 
           <div className="es-seeds">
             <div className="label" style={{ marginBottom: 10 }}>or — pick a suggested shelf to seed yours</div>

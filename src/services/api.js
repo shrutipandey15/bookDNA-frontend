@@ -219,6 +219,20 @@ export async function getAllEntries({ pageSize = 100, maxPages = 200 } = {}) {
   return { entries: all, total };
 }
 
+// Import a Goodreads / StoryGraph CSV export. [F2.6 / B2.7]
+// Multipart upload; apiFetch strips Content-Type for FormData so the browser sets
+// the multipart boundary. Returns { parsed, imported, skipped, errors: [] }.
+export async function importLibrary(file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await apiFetch("/entries/import", { method: "POST", body: fd });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "Import failed");
+  }
+  return res.json();
+}
+
 export async function createEntry(data) {
   const res = await apiFetch("/entries", {
     method: "POST",
@@ -359,6 +373,20 @@ export async function changePassword(currentPassword, newPassword) {
     const d = await res.json().catch(() => ({}));
     throw new Error(d.detail || "Failed to change password");
   }
+  return res.json();
+}
+
+// ── Mirror: insights + resurfaced memories [F2.5 / B2.6] ──
+// Both return null-able content — a genuine "not enough yet", never fabricated.
+export async function getInsight() {
+  const res = await apiFetch("/mirror/insight");
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function getWeeklyMemory() {
+  const res = await apiFetch("/mirror/weekly-memory");
+  if (!res.ok) return null;
   return res.json();
 }
 

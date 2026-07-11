@@ -13,6 +13,8 @@ import EntryModal from "./components/EntryModal";
 import Modal from "./components/Modal";
 import FinishFlow from "./components/FinishFlow";
 import CheckinPanel from "./components/CheckinPanel";
+import MirrorCard from "./components/MirrorCard";
+import ImportModal from "./components/ImportModal";
 import DNACard, { DnaReveal } from "./components/DNACard";
 import LandingPage from "./pages/LandingPage";
 import { Heatmap, Stats } from "./components/Panels";
@@ -242,10 +244,21 @@ function ReadingRoomStatStrip({ stats }) {
   );
 }
 
-function ReadingRoomFilterBar({ entries, filter, onFilter, sort, onSort, view, onView }) {
+function ReadingRoomFilterBar({ entries, filter, onFilter, sort, onSort, view, onView, search, onSearch }) {
   const presentEmotions = EMO_LIST.filter(([id]) => entries.some((e) => e.emotions?.some((em) => em.emotion_id === id)));
   return (
     <div className="rr-filterbar">
+      <div className="rr-search">
+        <span className="rr-search-glyph" aria-hidden="true">⌕</span>
+        <input
+          className="rr-search-input"
+          type="search"
+          placeholder="search your shelf…"
+          aria-label="Search your library by title or author"
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+        />
+      </div>
       <div className="label" style={{ marginRight: 4 }}>filter by feeling</div>
       <button className={`chip ${!filter ? "active" : ""}`} style={{ "--chip-c": "var(--ink)" }} onClick={() => onFilter(null)}>
         <span className="swatch" />all
@@ -332,7 +345,9 @@ function Dashboard() {
   const [modal, setModal] = useState(null);
   const [finishTarget, setFinishTarget] = useState(null);
   const [checkinTarget, setCheckinTarget] = useState(null);
+  const [showImport, setShowImport] = useState(false);
   const [filterEmotion, setFilterEmotion] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date");
   const [view, setView] = useState("cover");
   const [toast, setToast] = useState(null);
@@ -351,13 +366,23 @@ function Dashboard() {
 
   const stats = useMemo(() => buildDashboardStats(entries), [entries]);
 
+  // In-library search/filter [F2.7 / B2.9]. The whole library is already in
+  // memory (getAllEntries), so title/author search + emotion filter run instantly
+  // client-side — no round-trip per keystroke.
   const filteredEntries = useMemo(() => {
     let result = entries;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter((e) =>
+        (e.title || "").toLowerCase().includes(q) ||
+        (e.author || "").toLowerCase().includes(q),
+      );
+    }
     if (filterEmotion) result = result.filter((e) => e.emotions?.some((em) => em.emotion_id === filterEmotion));
     if (sortBy === "intensity") result = [...result].sort((a, b) => (b.intensity || 0) - (a.intensity || 0));
     else if (sortBy === "title") result = [...result].sort((a, b) => (a.title || "").localeCompare(b.title || ""));
     return result;
-  }, [entries, filterEmotion, sortBy]);
+  }, [entries, filterEmotion, searchQuery, sortBy]);
 
   const handleSaveEntry = async (data, existingId) => {
     try {
@@ -411,7 +436,7 @@ function Dashboard() {
             {entriesError && entries.length === 0 ? (
               <ShelfError error={entriesError} onRetry={loadEntries} />
             ) : entries.length === 0 ? (
-              <EmptyShelf onAddClick={() => setModal("new")} />
+              <EmptyShelf onAddClick={() => setModal("new")} onImport={() => setShowImport(true)} />
             ) : (
               <>
                 <ReadingRoomHero
@@ -424,6 +449,7 @@ function Dashboard() {
                   generating={generating}
                 />
                 <ReadingRoomStatStrip stats={stats} />
+                <MirrorCard />
                 {!canGenerate && (
                   <div className="progress-wrap">
                     <div className="progress-info">
@@ -442,6 +468,8 @@ function Dashboard() {
                   onSort={setSortBy}
                   view={view}
                   onView={setView}
+                  search={searchQuery}
+                  onSearch={setSearchQuery}
                 />
                 <ReadingRoomStacks
                   entries={filteredEntries}
@@ -527,6 +555,17 @@ function Dashboard() {
           backdropClassName="rr-modal-backdrop"
         >
           <CheckinPanel entry={checkinTarget} onClose={() => setCheckinTarget(null)} />
+        </Modal>
+      )}
+
+      {showImport && (
+        <Modal
+          onClose={() => setShowImport(false)}
+          ariaLabel="Import your library"
+          className="rr-modal-card"
+          backdropClassName="rr-modal-backdrop"
+        >
+          <ImportModal onClose={() => setShowImport(false)} onImported={loadEntries} />
         </Modal>
       )}
 

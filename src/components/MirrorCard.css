@@ -1,0 +1,41 @@
+/* The Mirror [F2.5 / B2.6] */
+.mirror {
+  border: 1px solid var(--rule, rgba(0,0,0,0.12));
+  border-left: 3px solid var(--brass);
+  border-radius: 2px;
+  background: var(--bg-vellum);
+  padding: 20px 24px;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mirror-eyebrow { color: var(--ink-quiet); }
+.mirror-insight {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-style: italic;
+  line-height: 1.35;
+  color: var(--ink);
+  margin: 0;
+}
+.mirror-memory {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border-top: 1px solid var(--rule, rgba(0,0,0,0.1));
+  padding-top: 14px;
+}
+.mirror-memory-glyph { color: var(--brass); font-size: 18px; line-height: 1.3; flex-shrink: 0; }
+.mirror-memory-text {
+  font-family: var(--font-display);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink-quiet);
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .mirror { padding: 16px 18px; }
+  .mirror-insight { font-size: 17px; }
+}
