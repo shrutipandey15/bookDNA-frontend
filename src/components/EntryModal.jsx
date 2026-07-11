@@ -9,7 +9,13 @@ const INTENSITY_LABELS = [
   "felt it", "felt it", "obsessed", "obsessed", "wrecked", "wrecked",
 ];
 
-export default function EntryModal({ entry, onSave, onDelete, onClose }) {
+const STATUS_OPTIONS = [
+  { value: "want_to_read", label: "want to read" },
+  { value: "reading",      label: "reading" },
+  { value: "finished",     label: "finished" },
+];
+
+export default function EntryModal({ entry, onSave, onDelete, onClose, onFinish, onCheckin }) {
   const [title, setTitle] = useState(entry?.title || "");
   const [author, setAuthor] = useState(entry?.author || "");
   const [coverUrl, setCoverUrl] = useState(entry?.cover_url || "");
@@ -18,6 +24,11 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   const [emotions, setEmotions] = useState(entry?.emotions?.map((e) => e.emotion_id) || []);
   const [quote, setQuote] = useState(entry?.quote || "");
   const [publicEcho, setPublicEcho] = useState(entry?.public_echo || "");
+  // Full entry fields [F2.1 / B2.4]: reading status, dates, private notes.
+  const [status, setStatus] = useState(entry?.status || "finished");
+  const [startedAt, setStartedAt] = useState(entry?.started_at || "");
+  const [finishedAt, setFinishedAt] = useState(entry?.finished_at || "");
+  const [notes, setNotes] = useState(entry?.notes || "");
 
   const [searchResults, setSearchResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
@@ -92,6 +103,10 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
       emotions: emotions.map((id) => ({ emotion_id: id, strength: intensity })),
       quote: quote.trim() || null,
       public_echo: publicEcho.trim() || null,
+      status,
+      started_at: startedAt || null,
+      finished_at: finishedAt || null,
+      notes: notes.trim() || null,
     }, entry?.id || null);
   };
   const handleDelete = () => { if (entry?.id) onDelete(entry.id); };
@@ -103,7 +118,9 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
   const firstWords = title ? title.split(" ").slice(0, 3).join(" ") : "";
 
   return (
-    <div className="em-card" role="dialog" aria-modal="true">
+    // Dialog semantics (role/aria-modal/focus trap) are owned by the wrapping
+    // <Modal> now — don't duplicate them here. [F1.7]
+    <div className="em-card">
       <div className="em-left" style={{ background: `linear-gradient(155deg, ${coverColor}, color-mix(in srgb, ${coverColor} 50%, #000))` }}>
         <div className="em-left-frame" />
         <div className="em-left-content">
@@ -190,6 +207,50 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
         </div>
 
         <div className="em-field">
+          <div className="label-sm em-field-label">reading status</div>
+          <div className="em-status" role="radiogroup" aria-label="Reading status">
+            {STATUS_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={status === o.value}
+                className={`em-status-opt ${status === o.value ? "active" : ""}`}
+                onClick={() => setStatus(o.value)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          {status !== "want_to_read" && (
+            <div className="em-dates">
+              <label className="em-date">
+                <span className="label-sm em-field-label">started</span>
+                <input
+                  type="date"
+                  className="em-input"
+                  value={startedAt || ""}
+                  max={finishedAt || undefined}
+                  onChange={(e) => setStartedAt(e.target.value)}
+                />
+              </label>
+              {status === "finished" && (
+                <label className="em-date">
+                  <span className="label-sm em-field-label">finished</span>
+                  <input
+                    type="date"
+                    className="em-input"
+                    value={finishedAt || ""}
+                    min={startedAt || undefined}
+                    onChange={(e) => setFinishedAt(e.target.value)}
+                  />
+                </label>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="em-field">
           <div className="label-sm em-field-label">what did it make you feel?</div>
           <div className="em-emo-chips">
             {EMO_LIST.map(([id, e]) => {
@@ -243,6 +304,17 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
         </div>
 
         <div className="em-field">
+          <div className="label-sm em-field-label">private notes</div>
+          <textarea
+            className="em-input em-textarea"
+            placeholder="Just for you — thoughts, context, where you were…"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+          />
+        </div>
+
+        <div className="em-field">
           <div className="em-echo-head">
             <span style={{ color: "var(--brass)" }}>✦</span>
             <div className="label-sm">public echo</div>
@@ -262,6 +334,16 @@ export default function EntryModal({ entry, onSave, onDelete, onClose }) {
             <button className="em-remove" onClick={handleDelete}>– remove from shelf</button>
           ) : <span />}
           <div style={{ display: "flex", gap: 10 }}>
+            {isEdit && onCheckin && entry?.status === "reading" && (
+              <button className="btn ghost em-checkin" onClick={() => onCheckin(entry)}>
+                ◐ check in
+              </button>
+            )}
+            {isEdit && onFinish && entry?.status !== "finished" && (
+              <button className="btn ghost em-finish" onClick={() => onFinish(entry)}>
+                ✦ finish this book
+              </button>
+            )}
             <button className="btn ghost" onClick={onClose}>cancel</button>
             <button className="btn brass" onClick={handleSave} disabled={!title.trim()}>
               {isEdit ? "save changes" : "shelve it"}

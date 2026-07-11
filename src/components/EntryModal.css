@@ -314,3 +314,27 @@
   .em-left-title { font-size: 28px; }
   .em-left-int-num { font-size: 48px; }
 }
+
+/* ── Reading status + dates [F2.1 / B2.4] ── */
+.em-status { display: inline-flex; border: 1px solid var(--rule, rgba(0,0,0,0.15)); border-radius: 2px; overflow: hidden; }
+.em-status-opt {
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-quiet);
+  background: var(--bg-vellum);
+  border: none;
+  border-right: 1px solid var(--rule, rgba(0,0,0,0.15));
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.em-status-opt:last-child { border-right: none; }
+.em-status-opt:hover { color: var(--ink); }
+.em-status-opt.active { background: var(--brass); color: #fff; }
+.em-status-opt:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+.em-dates { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+.em-date { display: flex; flex-direction: column; gap: 4px; }
+.em-date .em-input { padding: 8px 10px; }

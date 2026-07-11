@@ -237,6 +237,39 @@ export async function updateEntry(id, data) {
   return res.json();
 }
 
+// Finish Flow — the three-beat emotional arc. [F2.2 / B2.2]
+// data: { start_emotion_slug, middle_emotion_slug, end_emotion_slug, thought, intensity }
+export async function finishEntry(id, data) {
+  const res = await apiFetch(`/entries/${id}/finish`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "Failed to finish book");
+  }
+  return res.json();
+}
+
+// Currently-reading check-ins — the "how's it feeling now?" beat. [F2.3 / B2.3]
+export async function getCheckins(id) {
+  const res = await apiFetch(`/entries/${id}/checkins`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function createCheckin(id, data) {
+  const res = await apiFetch(`/entries/${id}/checkins`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "Failed to save check-in");
+  }
+  return res.json();
+}
+
 export async function deleteEntry(id) {
   const res = await apiFetch(`/entries/${id}`, { method: "DELETE" });
   if (!res.ok) {

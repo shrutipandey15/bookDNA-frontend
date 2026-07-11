@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useContext, createContext } from "react";
 import {
   getAllEntries, getDNAProfile, getHeatmap, getStats, generateDNA,
-  createEntry, updateEntry, deleteEntry, generateShareToken
+  createEntry, updateEntry, deleteEntry, generateShareToken, finishEntry
 } from "../services/api";
 import { getCachedEntries, setCachedEntries } from "../services/offline";
 
@@ -157,6 +157,18 @@ export function JournalProvider({ children }) {
     }
   };
 
+  // Finish Flow: record the three-beat arc, then replace the entry with the
+  // server's version (arc emotions, finish_thought, status=finished). [F2.2]
+  const finishBook = async (id, data) => {
+    const saved = await finishEntry(id, data);
+    setEntries(prev => { const next = prev.map(e => e.id === id ? saved : e); setCachedEntries(next); return next; });
+    setStale({ heatmap: true, stats: true, profile: true });
+    if (saved.room_unlocks_new?.length > 0) {
+      window.dispatchEvent(new CustomEvent("room-unlock", { detail: saved.room_unlocks_new }));
+    }
+    return saved;
+  };
+
   const removeEntry = async (id) => {
     const prevEntries = [...entries];
     setEntries(prev => { const next = prev.filter(e => e.id !== id); setCachedEntries(next); return next; });
@@ -207,7 +219,7 @@ export function JournalProvider({ children }) {
     <JournalContext.Provider value={{
       entries, analytics, stale, shareToken,
       loading, generating, entriesError,
-      addEntry, editEntry, removeEntry, generate, createToken,
+      addEntry, editEntry, removeEntry, finishBook, generate, createToken,
       ensureFresh, loadEntries,
     }}>
       {children}

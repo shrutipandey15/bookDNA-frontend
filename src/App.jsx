@@ -11,6 +11,8 @@ import EmptyShelf from "./components/EmptyShelf";
 import ShelfError from "./components/ShelfError";
 import EntryModal from "./components/EntryModal";
 import Modal from "./components/Modal";
+import FinishFlow from "./components/FinishFlow";
+import CheckinPanel from "./components/CheckinPanel";
 import DNACard, { DnaReveal } from "./components/DNACard";
 import LandingPage from "./pages/LandingPage";
 import { Heatmap, Stats } from "./components/Panels";
@@ -308,7 +310,7 @@ function Dashboard() {
   const {
     entries, analytics, stale,
     loading, generating, entriesError,
-    addEntry, editEntry, removeEntry, generate, ensureFresh, loadEntries
+    addEntry, editEntry, removeEntry, finishBook, generate, ensureFresh, loadEntries
   } = useJournal();
 
   const navigate = useNavigate();
@@ -328,6 +330,8 @@ function Dashboard() {
   };
 
   const [modal, setModal] = useState(null);
+  const [finishTarget, setFinishTarget] = useState(null);
+  const [checkinTarget, setCheckinTarget] = useState(null);
   const [filterEmotion, setFilterEmotion] = useState(null);
   const [sortBy, setSortBy] = useState("date");
   const [view, setView] = useState("cover");
@@ -365,6 +369,12 @@ function Dashboard() {
   const handleDeleteEntry = async (id) => {
     try { await removeEntry(id); setModal(null); }
     catch (err) { showToast("Failed to delete book"); }
+  };
+  // Let errors propagate so FinishFlow can show them inline; toast only on success.
+  const handleFinishBook = async (id, data) => {
+    const saved = await finishBook(id, data);
+    showToast("Book finished ✦", "success");
+    return saved;
   };
   const handleGenerateDNA = async () => {
     try { await generate(); setTab("dna"); showToast("Your DNA has been revealed ✦", "success"); }
@@ -503,6 +513,34 @@ function Dashboard() {
             onSave={handleSaveEntry}
             onDelete={handleDeleteEntry}
             onClose={() => setModal(null)}
+            onFinish={(entry) => { setModal(null); setFinishTarget(entry); }}
+            onCheckin={(entry) => { setModal(null); setCheckinTarget(entry); }}
+          />
+        </Modal>
+      )}
+
+      {checkinTarget && (
+        <Modal
+          onClose={() => setCheckinTarget(null)}
+          ariaLabel={`Check in on ${checkinTarget.title || "book"}`}
+          className="rr-modal-card"
+          backdropClassName="rr-modal-backdrop"
+        >
+          <CheckinPanel entry={checkinTarget} onClose={() => setCheckinTarget(null)} />
+        </Modal>
+      )}
+
+      {finishTarget && (
+        <Modal
+          onClose={() => setFinishTarget(null)}
+          ariaLabel={`Finish ${finishTarget.title || "book"}`}
+          className="rr-modal-card"
+          backdropClassName="rr-modal-backdrop"
+        >
+          <FinishFlow
+            entry={finishTarget}
+            onFinish={handleFinishBook}
+            onClose={() => setFinishTarget(null)}
           />
         </Modal>
       )}
