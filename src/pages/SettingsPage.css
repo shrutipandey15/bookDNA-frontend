@@ -135,3 +135,32 @@
   .set-rail-item { padding: 8px 12px; }
   .set-rail-item.active { border-left: none; border-bottom: 2px solid var(--oxblood); padding-left: 12px; }
 }
+
+/* ── Visibility control [F2.8 / B2.1] ── */
+.set-vis { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.set-vis-opt {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--bg-vellum);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.set-vis-opt:hover { border-color: var(--brass); }
+.set-vis-opt.active { border-color: var(--brass); border-left: 3px solid var(--brass); }
+.set-vis-opt input { margin-top: 3px; accent-color: var(--brass); flex-shrink: 0; }
+.set-vis-opt input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.set-vis-body { display: flex; flex-direction: column; gap: 3px; }
+.set-vis-title { font-family: var(--font-display); font-size: 16px; color: var(--ink); }
+.set-vis-desc { font-size: 13px; color: var(--ink-quiet); line-height: 1.4; }
+
+.set-share-out { display: flex; gap: 8px; align-items: center; margin: 14px 0; }
+.set-share-out .set-input { flex: 1; font-size: 13px; font-family: var(--font-mono, monospace); }
+.set-share-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+@media (max-width: 900px) {
+  .set-share-out { flex-direction: column; align-items: stretch; }
+}

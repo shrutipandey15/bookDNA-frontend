@@ -1,15 +1,24 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { getSettings, updateSettings, changePassword } from "../services/api";
+import { getSettings, updateSettings, changePassword, generateShareToken, revokeShareTokens } from "../services/api";
 import "./SettingsPage.css";
 
 const SECTIONS = [
-  { id: "profile",  label: "Profile",        glyph: "◐" },
-  { id: "account",  label: "Account",        glyph: "◈" },
-  { id: "security", label: "Security",       glyph: "✦" },
-  { id: "data",     label: "Your data",      glyph: "◇" },
-  { id: "danger",   label: "Danger zone",    glyph: "×" },
+  { id: "profile",    label: "Profile",        glyph: "◐" },
+  { id: "visibility", label: "Visibility",     glyph: "◉" },
+  { id: "account",    label: "Account",        glyph: "◈" },
+  { id: "security",   label: "Security",       glyph: "✦" },
+  { id: "data",       label: "Your data",      glyph: "◇" },
+  { id: "danger",     label: "Danger zone",    glyph: "×" },
+];
+
+// The 3-way profile_visibility control [F2.8 / B2.1]. Shelf, journal, and DNA are
+// ALWAYS private — this governs only the profile page.
+const VISIBILITY_OPTIONS = [
+  { value: "private",   title: "Private",   desc: "Only you. Your profile page is visible to no one else." },
+  { value: "community", title: "Community", desc: "Any signed-in member who visits your handle can see your profile." },
+  { value: "public",    title: "Public",   desc: "Anyone on the web; indexable and shareable." },
 ];
 
 export default function SettingsPage() {
@@ -24,6 +33,10 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
   const [toast, setToast] = useState(null);
+  const [visibility, setVisibility] = useState(null);
+  const [savingVis, setSavingVis] = useState(false);
+  const [shareLink, setShareLink] = useState(null);
+  const [shareBusy, setShareBusy] = useState(false);
 
   const showToast = (message, type = "error") => {
     setToast({ message, type });
@@ -31,8 +44,55 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    getSettings().then((s) => { if (s) setDisplayName(s.display_name || ""); });
+    getSettings().then((s) => {
+      if (s) {
+        setDisplayName(s.display_name || "");
+        setVisibility(s.profile_visibility || "private");
+      }
+    });
   }, []);
+
+  const handleVisibility = async (next) => {
+    if (next === visibility || savingVis) return;
+    const prev = visibility;
+    setVisibility(next); // optimistic
+    setSavingVis(true);
+    try {
+      await updateSettings({ profile_visibility: next });
+      showToast("Visibility updated", "success");
+    } catch (err) {
+      setVisibility(prev); // revert on failure
+      showToast(err.message || "Couldn't update visibility");
+    }
+    setSavingVis(false);
+  };
+
+  const handleCreateShareLink = async () => {
+    setShareBusy(true);
+    try {
+      const { share_token } = await generateShareToken();
+      setShareLink(`${window.location.origin}/s/${share_token}`);
+      showToast("Share link created", "success");
+    } catch (err) { showToast(err.message || "Couldn't create link"); }
+    setShareBusy(false);
+  };
+
+  const handleRevokeShareLinks = async () => {
+    setShareBusy(true);
+    try {
+      await revokeShareTokens();
+      setShareLink(null);
+      showToast("All share links revoked", "success");
+    } catch (err) { showToast(err.message || "Couldn't revoke links"); }
+    setShareBusy(false);
+  };
+
+  const handleCopyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      showToast("Copied to clipboard", "success");
+    } catch { showToast("Copy failed — select and copy manually"); }
+  };
 
   const handleSaveProfile = async () => {
     if (!displayName.trim()) return;
@@ -123,6 +183,68 @@ export default function SettingsPage() {
                 </span>
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.18em" }}>PROFILE</span>
               </button>
+            </div>
+          )}
+
+          {section === "visibility" && (
+            <div className="card editorial set-card">
+              <div className="label" style={{ marginBottom: 12 }}>visibility</div>
+              <h3 className="set-card-h">Who can find you.</h3>
+              <p className="set-card-d">
+                Your shelf, journal, and DNA are <em>always</em> private. This governs only your profile page.
+              </p>
+
+              <div className="set-vis" role="radiogroup" aria-label="Profile visibility">
+                {VISIBILITY_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`set-vis-opt ${visibility === opt.value ? "active" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="profile-visibility"
+                      value={opt.value}
+                      checked={visibility === opt.value}
+                      disabled={savingVis || visibility === null}
+                      onChange={() => handleVisibility(opt.value)}
+                    />
+                    <span className="set-vis-body">
+                      <span className="set-vis-title">{opt.title}</span>
+                      <span className="set-vis-desc">{opt.desc}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="rule" style={{ margin: "24px 0" }} />
+
+              <div className="label" style={{ marginBottom: 8 }}>share link</div>
+              <p className="set-card-d">
+                A private, revocable link to your profile card — it works regardless of the setting above.
+                The link is shown once; store it somewhere safe.
+              </p>
+
+              {shareLink && (
+                <div className="set-share-out">
+                  <input
+                    className="set-input"
+                    readOnly
+                    value={shareLink}
+                    aria-label="Your share link"
+                    onFocus={(e) => e.target.select()}
+                  />
+                  <button className="btn ghost" onClick={handleCopyShareLink}>copy</button>
+                </div>
+              )}
+
+              <div className="set-share-actions">
+                <button className="btn brass" onClick={handleCreateShareLink} disabled={shareBusy}>
+                  {shareBusy ? "Working" : "Create a link"}
+                </button>
+                <button className="btn ghost" onClick={handleRevokeShareLinks} disabled={shareBusy}>
+                  Revoke all links
+                </button>
+              </div>
             </div>
           )}
 

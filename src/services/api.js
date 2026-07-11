@@ -286,6 +286,12 @@ export async function generateShareToken() {
   return res.json();
 }
 
+// Revoke ALL of the caller's active share links (204 No Content). [B2.1]
+export async function revokeShareTokens() {
+  const res = await apiFetch("/user/share-token", { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to revoke share links");
+}
+
 export async function getSharedDNA(token) {
   const res = await apiFetch(`/public/shared/${token}`);
   if (!res.ok) return null;
