@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { Settings } from "lucide-react";
-import { Routes, Route, useParams, Link, useNavigate, Navigate, Outlet } from "react-router-dom";
+import { Routes, Route, useParams, Link, useNavigate, Navigate, Outlet, useSearchParams } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import { useJournal, JournalProvider } from "./contexts/JournalContext";
 import { saveCardAsImage } from "./utils/cardUtils";
@@ -10,6 +10,7 @@ import BookCard from "./components/BookCard";
 import EmptyShelf from "./components/EmptyShelf";
 import ShelfError from "./components/ShelfError";
 import EntryModal from "./components/EntryModal";
+import Modal from "./components/Modal";
 import DNACard, { DnaReveal } from "./components/DNACard";
 import LandingPage from "./pages/LandingPage";
 import { Heatmap, Stats } from "./components/Panels";
@@ -313,10 +314,18 @@ function Dashboard() {
   const navigate = useNavigate();
   const [theme, toggleTheme] = useReadingRoomTheme();
 
-  const [tab, setTab] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("view") === "dna" ? "dna" : "shelf";
-  });
+  // Tabs are URL-driven so each view is deep-linkable and the browser back
+  // button moves between them. `?view=` is the source of truth. [F1.6 / P5-4]
+  const [searchParams, setSearchParams] = useSearchParams();
+  const VALID_TABS = ["shelf", "room", "heatmap", "stats", "dna"];
+  const viewParam = searchParams.get("view");
+  const tab = VALID_TABS.includes(viewParam) ? viewParam : "shelf";
+  const setTab = (id) => {
+    if (id === "echoes") { navigate("/echoes"); return; }
+    // Keep the URL clean: the default tab drops the param entirely. A new history
+    // entry (not replace) is what makes Back return to the previous tab.
+    setSearchParams(id === "shelf" ? {} : { view: id });
+  };
 
   const [modal, setModal] = useState(null);
   const [filterEmotion, setFilterEmotion] = useState(null);
@@ -329,8 +338,7 @@ function Dashboard() {
     if (tab === "heatmap") ensureFresh("heatmap");
     if (tab === "stats") ensureFresh("stats");
     if (tab === "dna") ensureFresh("profile");
-    if (tab === "echoes") navigate("/echoes");
-  }, [tab, ensureFresh, navigate]);
+  }, [tab, ensureFresh]);
 
   const showToast = (message, type = "error") => {
     setToast({ message, type });
@@ -484,16 +492,19 @@ function Dashboard() {
       </main>
 
       {modal && (
-        <div className="rr-modal-backdrop modal-backdrop" onClick={() => setModal(null)}>
-          <div className="rr-modal-card modal-card" onClick={(e) => e.stopPropagation()}>
-            <EntryModal
-              entry={modal === "new" ? null : modal}
-              onSave={handleSaveEntry}
-              onDelete={handleDeleteEntry}
-              onClose={() => setModal(null)}
-            />
-          </div>
-        </div>
+        <Modal
+          onClose={() => setModal(null)}
+          ariaLabel={modal === "new" ? "Log a book" : "Edit book"}
+          className="rr-modal-card"
+          backdropClassName="rr-modal-backdrop"
+        >
+          <EntryModal
+            entry={modal === "new" ? null : modal}
+            onSave={handleSaveEntry}
+            onDelete={handleDeleteEntry}
+            onClose={() => setModal(null)}
+          />
+        </Modal>
       )}
       {toast && <div className={`toast toast-${toast.type}`} onClick={() => setToast(null)}>{toast.message}</div>}
     </div>

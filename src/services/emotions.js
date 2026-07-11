@@ -3,6 +3,13 @@ import {
   Eye, Droplets, Lightbulb, Telescope, Leaf, Wind, Moon, HelpCircle,
 } from "lucide-react";
 
+// ── INTERIM canonical emotion vocabulary [F1.5 / P2-9, P2-12] ──
+// The backend will publish the single source of truth for this vocabulary at
+// B2.10 (backend Phase 2). Until that endpoint exists, this file is the stub the
+// UI reads from. Slugs here MUST stay aligned with the backend's VALID_SLUGS
+// (note: `two_am`, NOT the dead `2am` — see backend B1.2) so DNA results render.
+// When B2.10 lands: fetch the served vocabulary and back EMOTIONS with it here —
+// this is the only place that needs to change; consumers use the accessors below.
 export const EMOTIONS = {
   rage:        { label: "Rage",        color: "#c4553a", Icon: Flame,     glyph: "◉", desc: "Righteous fury." },
   dread:       { label: "Dread",       color: "#5a5a8a", Icon: CloudMoon, glyph: "◐", desc: "A knot in your stomach." },

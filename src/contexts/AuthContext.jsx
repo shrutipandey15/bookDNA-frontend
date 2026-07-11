@@ -1,41 +1,41 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import {
-  isAuthed as checkAuthed,
-  clearTokens,
+  refreshOnce,
+  clearSession,
   getMe,
   login as apiLogin,
   register as apiRegister,
+  logout as apiLogout,
 } from "../services/api";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [authed, setAuthed] = useState(checkAuthed());
+  const [authed, setAuthed] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user profile on mount or when authed changes
+  // Silent login on boot: the access token is gone from memory after a reload,
+  // but the httpOnly refresh cookie survives. Try one /refresh; if it succeeds we
+  // have an access token and can load the user. If it 401s, there's no valid
+  // session → show login. [authCookieContract.md §Frontend behaviour]
   const loadUser = useCallback(async () => {
-    if (!checkAuthed()) {
-      setAuthed(false);
-      setUser(null);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
+      await refreshOnce();
       const userData = await getMe();
       if (userData) {
         setUser(userData);
         setAuthed(true);
       } else {
-        // Token invalid
-        clearTokens();
+        clearSession();
         setAuthed(false);
         setUser(null);
       }
     } catch {
-      clearTokens();
+      // No valid cookie / refresh failed — an unauthenticated first load, not an
+      // error to surface.
+      clearSession();
       setAuthed(false);
       setUser(null);
     }
@@ -47,20 +47,25 @@ export function AuthProvider({ children }) {
   }, [loadUser]);
 
   const login = async (email, password) => {
-    const tokens = await apiLogin(email, password);
+    // login response carries the user, so no extra /me round-trip needed.
+    const data = await apiLogin(email, password);
+    if (data.user) setUser(data.user);
     setAuthed(true);
-    const userData = await getMe();
-    if (userData) setUser(userData);
-    return tokens;
+    return data;
   };
 
   const register = async (email, username, password, displayName) => {
-    const userData = await apiRegister(email, username, password, displayName);
-    return userData;
+    // register auto-logs-in (same shape as login).
+    const data = await apiRegister(email, username, password, displayName);
+    if (data.user) {
+      setUser(data.user);
+      setAuthed(true);
+    }
+    return data;
   };
 
-  const logout = () => {
-    clearTokens();
+  const logout = async () => {
+    await apiLogout();
     setAuthed(false);
     setUser(null);
   };

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useContext, createContext } from "react";
 import {
-  getEntries, getDNAProfile, getHeatmap, getStats, generateDNA,
+  getAllEntries, getDNAProfile, getHeatmap, getStats, generateDNA,
   createEntry, updateEntry, deleteEntry, generateShareToken
 } from "../services/api";
 import { getCachedEntries, setCachedEntries } from "../services/offline";
@@ -35,7 +35,7 @@ export function JournalProvider({ children }) {
     }
 
     try {
-      const eData = await getEntries();
+      const eData = await getAllEntries();
       setEntries(eData.entries || []);
       setCachedEntries(eData.entries || []);
       setEntriesError(null);

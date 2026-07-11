@@ -34,29 +34,35 @@ async function apiGet(path) {
   return res.json();
 }
 
-// ── Token management ──
-export function getTokens() {
-  try {
-    return JSON.parse(localStorage.getItem("bookdna_tokens"));
-  } catch {
-    return null;
-  }
+// ── Token management (authCookieContract.md / B1.10 / P1-1) ──
+// The access token lives in MEMORY ONLY — never localStorage. An XSS can read
+// localStorage, so a refresh token stored there = account takeover. The refresh
+// token instead lives in an httpOnly cookie the browser manages and JS cannot
+// see; the worst an XSS can do is steal a 15-minute access token.
+let accessToken = null;
+
+export function getAccessToken() {
+  return accessToken;
 }
 
-export function saveTokens(tokens) {
-  localStorage.setItem("bookdna_tokens", JSON.stringify(tokens));
+export function setAccessToken(token) {
+  accessToken = token || null;
 }
 
-export function clearTokens() {
-  localStorage.removeItem("bookdna_tokens");
-  // A cleared session must never leave one account's cached shelf visible to
-  // the next user. clearTokens is the single choke point every logout path
-  // hits (explicit logout, invalid-token load, failed refresh). [F1.4 / P5-3]
+// End the session locally: drop the in-memory token and wipe the per-account
+// cache so the next user never sees the previous user's shelf. [F1.4 / P5-3]
+// (The httpOnly cookie is cleared server-side by POST /auth/logout.)
+export function clearSession() {
+  accessToken = null;
   clearCache();
 }
 
-export function isAuthed() {
-  return !!getTokens()?.access_token;
+// One-time cutover: older builds stored tokens in localStorage. They're no longer
+// valid; remove them so nothing stale lingers. [authCookieContract.md §Cutover]
+try {
+  localStorage.removeItem("bookdna_tokens");
+} catch {
+  // ignore — storage may be unavailable
 }
 
 // ── Single-flight token refresh ──
@@ -67,21 +73,24 @@ export function isAuthed() {
 // /auth/refresh fires per stampede. [F1.1 / P2-11]
 let refreshPromise = null;
 
-async function doRefresh(refreshToken) {
+async function doRefresh() {
+  // Empty body — the httpOnly cookie IS the credential. Must send credentials so
+  // the browser attaches the cookie.
   const res = await fetch(`${API_BASE}/auth/refresh`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refreshToken }),
+    credentials: "same-origin",
   });
   if (!res.ok) throw new Error("refresh_failed");
-  const newTokens = await res.json();
-  saveTokens(newTokens);
-  return newTokens;
+  const data = await res.json();
+  setAccessToken(data.access_token);
+  return data;
 }
 
-function refreshOnce(refreshToken) {
+// Exposed so the app can attempt a silent login on boot (access token is gone
+// from memory after a reload; the cookie survives). Single-flight guarded.
+export function refreshOnce() {
   if (!refreshPromise) {
-    refreshPromise = doRefresh(refreshToken).finally(() => {
+    refreshPromise = doRefresh().finally(() => {
       refreshPromise = null;
     });
   }
@@ -90,10 +99,9 @@ function refreshOnce(refreshToken) {
 
 // ── Core fetch wrapper with auto-refresh ──
 export async function apiFetch(path, opts = {}) {
-  const tokens = getTokens();
   const headers = { "Content-Type": "application/json", ...opts.headers };
-  if (tokens?.access_token) {
-    headers["Authorization"] = `Bearer ${tokens.access_token}`;
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
   // Handle blob responses (don't set Content-Type if body is FormData, etc.)
@@ -101,15 +109,18 @@ export async function apiFetch(path, opts = {}) {
     delete headers["Content-Type"];
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "same-origin",
+    ...opts,
+    headers,
+  });
 
-  // Auto-refresh on 401 (single-flight; retry once with the fresh token)
-  if (res.status === 401 && tokens?.refresh_token && !opts._retried) {
+  // Auto-refresh on 401 (single-flight; retry once with the fresh token).
+  if (res.status === 401 && !opts._retried) {
     try {
-      await refreshOnce(tokens.refresh_token);
+      await refreshOnce();
     } catch {
-      clearTokens();
-      if (typeof window !== "undefined") window.location.href = "/";
+      clearSession();
       return res;
     }
     return apiFetch(path, { ...opts, _retried: true });
@@ -119,9 +130,12 @@ export async function apiFetch(path, opts = {}) {
 }
 
 // ── Auth ──
+// login/register return { access_token, expires_in, user } and set the refresh
+// cookie via Set-Cookie. No refresh token ever appears in the body.
 export async function register(email, username, password, displayName) {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: "POST",
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       email,
@@ -131,25 +145,42 @@ export async function register(email, username, password, displayName) {
     }),
   });
   if (!res.ok) {
-    const d = await res.json();
+    const d = await res.json().catch(() => ({}));
     throw new Error(d.detail || "Registration failed");
   }
-  return res.json();
+  const data = await res.json();
+  setAccessToken(data.access_token);
+  return data;
 }
 
 export async function login(email, password) {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
-    const d = await res.json();
+    const d = await res.json().catch(() => ({}));
     throw new Error(d.detail || "Login failed");
   }
-  const tokens = await res.json();
-  saveTokens(tokens);
-  return tokens;
+  const data = await res.json();
+  setAccessToken(data.access_token);
+  return data;
+}
+
+// Revoke server-side (clears the httpOnly cookie) then drop local state. Best
+// effort — even if the network call fails, the local session is cleared.
+export async function logout() {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      credentials: "same-origin",
+    });
+  } catch {
+    // ignore — clear locally regardless
+  }
+  clearSession();
 }
 
 export async function getMe() {
@@ -159,10 +190,33 @@ export async function getMe() {
 }
 
 // ── Entries ──
-export async function getEntries(page = 1, perPage = 100) {
-  // Throws ApiError on failure so an empty shelf (real) is never confused with a
-  // 500/429 (an error the user must see). [F1.2 / P5-2]
-  return apiGet(`/entries?page=${page}&per_page=${perPage}`);
+// One page of entries in keyset (cursor) mode — the preferred contract [B1.4].
+// Pass `cursor` from the previous page's `next_cursor`; omit it for the first
+// page. Returns { entries, total, next_cursor, has_more }. Throws ApiError on
+// failure (incl. 400 for a malformed cursor) so an empty shelf is never confused
+// with an error. [F1.2 / P5-2]
+export async function getEntries({ cursor = null, limit = 100 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  return apiGet(`/entries?${params.toString()}`);
+}
+
+// Walk the keyset cursor to the end and return the whole library. The shelf, DNA,
+// stats and filters all work over the full set in memory; this also fixes the old
+// per_page=100 truncation that hid books past the 100th. [F1.8 / B1.4]
+// `maxPages` is a safety valve against a backend that never flips has_more.
+export async function getAllEntries({ pageSize = 100, maxPages = 200 } = {}) {
+  const all = [];
+  let cursor = null;
+  let total = 0;
+  for (let i = 0; i < maxPages; i++) {
+    const data = await getEntries({ cursor, limit: pageSize });
+    all.push(...(data.entries || []));
+    total = typeof data.total === "number" ? data.total : all.length;
+    if (!data.has_more || !data.next_cursor) break;
+    cursor = data.next_cursor;
+  }
+  return { entries: all, total };
 }
 
 export async function createEntry(data) {

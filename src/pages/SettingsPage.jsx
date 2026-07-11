@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { getSettings, updateSettings, changePassword } from "../services/api";
-import { clearCache } from "../services/offline";
 import "./SettingsPage.css";
 
 const SECTIONS = [
@@ -59,8 +58,11 @@ export default function SettingsPage() {
     setChangingPw(false);
   };
 
-  const handleLogout = () => {
-    logout(); clearCache(); navigate("/");
+  const handleLogout = async () => {
+    // logout() revokes the refresh cookie server-side and clears local state
+    // (including the cache). Navigate once it's done.
+    await logout();
+    navigate("/");
   };
 
   return (

@@ -64,10 +64,13 @@ export default function AuthPage() {
     setError("");
     setLoading(true);
     try {
+      // register auto-logs-in (returns tokens + user, sets the refresh cookie),
+      // so we never need a second login round-trip. [authCookieContract.md]
       if (mode === "register") {
         await register(email.toLowerCase().trim(), username.trim(), password, displayName.trim() || undefined);
+      } else {
+        await login(email.toLowerCase().trim(), password);
       }
-      await login(email.toLowerCase().trim(), password);
     } catch (err) {
       const msg = err.message || "Something went wrong";
       setError(msg);
