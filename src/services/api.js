@@ -376,6 +376,70 @@ export async function changePassword(currentPassword, newPassword) {
   return res.json();
 }
 
+// ── Profile — the private mirror as a place [F2.8 / B2.1 §Feature 2] ──
+// Composed dict: { restricted, handle, display_name, bio, profile_visibility,
+// personality_type, is_self, signature, now_reading[], collections[], milestones[],
+// book_count, recent[] }.
+export async function getMyProfile() {
+  const res = await apiFetch("/me/profile");
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function getProfileByHandle(handle) {
+  const res = await apiFetch(`/profile/${encodeURIComponent(handle)}`);
+  if (!res.ok) return null; // 404 = blocked / unknown / private-to-stranger
+  return res.json();
+}
+
+export async function updateMyProfile(data) {
+  const res = await apiFetch("/me/profile", { method: "PATCH", body: JSON.stringify(data) });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "Couldn't update profile");
+  }
+  return res.json();
+}
+
+// ── Collections (curated shelves) ──
+export async function createCollection(data) {
+  const res = await apiFetch("/collections", { method: "POST", body: JSON.stringify(data) });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "Couldn't create collection");
+  }
+  return res.json();
+}
+
+export async function updateCollection(id, data) {
+  const res = await apiFetch(`/collections/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+  if (!res.ok) throw new Error("Couldn't update collection");
+  return res.json();
+}
+
+export async function deleteCollection(id) {
+  const res = await apiFetch(`/collections/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Couldn't delete collection");
+}
+
+export async function addCollectionItem(id, entryId) {
+  const res = await apiFetch(`/collections/${id}/items`, { method: "POST", body: JSON.stringify({ entry_id: entryId }) });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "Couldn't add book");
+  }
+}
+
+export async function removeCollectionItem(id, entryId) {
+  const res = await apiFetch(`/collections/${id}/items/${entryId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Couldn't remove book");
+}
+
+export async function reorderCollection(id, entryIds) {
+  const res = await apiFetch(`/collections/${id}/reorder`, { method: "PATCH", body: JSON.stringify({ entry_ids: entryIds }) });
+  if (!res.ok) throw new Error("Couldn't reorder");
+}
+
 // ── Mirror: insights + resurfaced memories [F2.5 / B2.6] ──
 // Both return null-able content — a genuine "not enough yet", never fabricated.
 export async function getInsight() {

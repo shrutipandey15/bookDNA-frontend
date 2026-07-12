@@ -46,6 +46,7 @@ const PublicProfile = lazy(() => import("./pages/PublicProfile"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const EchoesPage = lazy(() => import("./pages/EchoesPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const ReadingRoom = lazy(() => import("./components/room/ReadingRoom"));
 
 
@@ -147,6 +148,7 @@ function ReadingRoomHeader({ user, tab, onTab, theme, onToggleTheme, onAddBook, 
             </button>
           )}
           <NotificationCenter />
+          <button className="rr-theme-toggle" onClick={() => navigate("/me")} title="Your study (profile)" aria-label="Your profile">◐</button>
           <button className="rr-theme-toggle" onClick={onToggleTheme} title="Toggle Vellum / Lamplight">
             {theme === "dark" ? "☀" : "☾"}
           </button>
@@ -661,6 +663,7 @@ export default function App() {
         >
           <Route index element={<Dashboard />} />
           <Route path="echoes" element={<EchoesPage />} />
+          <Route path="me" element={<ProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="admin" element={<AdminPage />} />
         </Route>

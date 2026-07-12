@@ -125,9 +125,11 @@ src/
 │   ├── WelcomeModal.jsx          First-run: "begin with one book"
 │   ├── ShelfError.jsx            Honest error state (429 / 500 / offline)
 │   ├── echo/                     Echo: Composer, Card, Thread, ReportModal, Crisis
-│   └── notifications/            NotificationCenter (bell + panel + digest card)
+│   ├── notifications/            NotificationCenter (bell + panel + digest card)
+│   └── profile/                  CollectionsEditor (curated shelves, keyboard-reorder)
 ├── pages/
 │   ├── EchoesPage.jsx            The Echo feed
+│   ├── ProfilePage.jsx           The /me self-view (identity, Now, signature, collections)
 │   ├── SettingsPage.jsx          Visibility, handle, notification prefs, security
 │   ├── AuthPage.jsx              Login / register
 │   └── AdminPage.jsx             Admin dashboard
@@ -161,9 +163,10 @@ forwards `/api/*` to the backend on the same origin.
 ## What's next
 
 See [`ROADMAP.md`](./ROADMAP.md). Phases 1–4 (Foundation, the Private Mirror, Echo, and
-Calm Notifications) are built. The fuller **Profile** self-view (collections, milestones,
-aggregated history) is waiting on backend that isn't shipped yet. **Twin** (reader-matching)
-and **Chat** are deliberately parked until Echo proves itself.
+Calm Notifications) are built — including the **Profile** self-view (`/me`): identity strip,
+Now reading, emotional signature, curated **collections** (create, add books, keyboard-reorder),
+reading history, and substance-only milestones. **Twin** (reader-matching) and **Chat** are
+deliberately parked until Echo proves itself.
 
 ---
 
