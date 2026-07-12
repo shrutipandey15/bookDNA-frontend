@@ -1,17 +1,21 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { getSettings, updateSettings, changePassword, generateShareToken, revokeShareTokens, changeHandle } from "../services/api";
+import { getSettings, updateSettings, changePassword, generateShareToken, revokeShareTokens, changeHandle, getNotificationPrefs, updateNotificationPrefs } from "../services/api";
 import "./SettingsPage.css";
 
 const SECTIONS = [
-  { id: "profile",    label: "Profile",        glyph: "◐" },
-  { id: "visibility", label: "Visibility",     glyph: "◉" },
-  { id: "account",    label: "Account",        glyph: "◈" },
-  { id: "security",   label: "Security",       glyph: "✦" },
-  { id: "data",       label: "Your data",      glyph: "◇" },
-  { id: "danger",     label: "Danger zone",    glyph: "×" },
+  { id: "profile",       label: "Profile",        glyph: "◐" },
+  { id: "visibility",    label: "Visibility",     glyph: "◉" },
+  { id: "notifications", label: "Notifications",  glyph: "◔" },
+  { id: "account",       label: "Account",        glyph: "◈" },
+  { id: "security",      label: "Security",       glyph: "✦" },
+  { id: "data",          label: "Your data",      glyph: "◇" },
+  { id: "danger",        label: "Danger zone",    glyph: "×" },
 ];
+
+const HOURS = Array.from({ length: 24 }, (_, h) => h);
+const fmtHour = (h) => `${String(h).padStart(2, "0")}:00`;
 
 // The 3-way profile_visibility control [F2.8 / B2.1]. Shelf, journal, and DNA are
 // ALWAYS private — this governs only the profile page.
@@ -40,6 +44,8 @@ export default function SettingsPage() {
   const [savingHandle, setSavingHandle] = useState(false);
   const [shareLink, setShareLink] = useState(null);
   const [shareBusy, setShareBusy] = useState(false);
+  const [prefs, setPrefs] = useState(null);
+  const [prefsBusy, setPrefsBusy] = useState(false);
 
   const showToast = (message, type = "error") => {
     setToast({ message, type });
@@ -56,6 +62,26 @@ export default function SettingsPage() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    getNotificationPrefs().then((p) => { if (p) setPrefs(p); });
+  }, []);
+
+  // Persist a partial prefs change optimistically; revert on failure.
+  const savePrefs = async (patch) => {
+    if (!prefs || prefsBusy) return;
+    const prev = prefs;
+    setPrefs({ ...prefs, ...patch }); // optimistic
+    setPrefsBusy(true);
+    try {
+      const saved = await updateNotificationPrefs(patch);
+      setPrefs(saved);
+    } catch (err) {
+      setPrefs(prev);
+      showToast(err.message || "Couldn't update preferences");
+    }
+    setPrefsBusy(false);
+  };
 
   const handleChangeHandle = async () => {
     const next = handle.trim();
@@ -291,6 +317,92 @@ export default function SettingsPage() {
             </div>
           )}
 
+          {section === "notifications" && (
+            <div className="card editorial set-card">
+              <div className="label" style={{ marginBottom: 12 }}>notifications</div>
+              <h3 className="set-card-h">Calm by default.</h3>
+              <p className="set-card-d">
+                Nothing per-event or guilt-based. A weekly digest, and batched notices when
+                someone replies to your echoes. Security alerts always come through.
+              </p>
+
+              {!prefs ? (
+                <div className="set-card-d">loading…</div>
+              ) : (
+                <>
+                  <Toggle
+                    label="Replies to your echoes"
+                    hint="Batched — 'three readers replied', not three pings."
+                    checked={prefs.reply_enabled}
+                    disabled={prefsBusy}
+                    onChange={(v) => savePrefs({ reply_enabled: v })}
+                  />
+                  <Toggle
+                    label="Weekly reading digest"
+                    hint="Your reading week + a resurfaced memory, once a week."
+                    checked={prefs.digest_enabled}
+                    disabled={prefsBusy}
+                    onChange={(v) => savePrefs({ digest_enabled: v })}
+                  />
+
+                  <div className="rule" style={{ margin: "20px 0" }} />
+
+                  <div className="label-sm set-field-label">quiet hours</div>
+                  <p className="set-card-d" style={{ fontSize: 13, marginTop: 4 }}>
+                    Non-urgent notifications wait until quiet hours end.
+                  </p>
+                  <div className="set-quiet">
+                    <label className="set-quiet-field">
+                      <span className="label-sm">from</span>
+                      <select
+                        className="set-input"
+                        value={prefs.quiet_hours_start ?? ""}
+                        disabled={prefsBusy}
+                        onChange={(e) => savePrefs({ quiet_hours_start: e.target.value === "" ? null : Number(e.target.value) })}
+                      >
+                        <option value="">off</option>
+                        {HOURS.map((h) => <option key={h} value={h}>{fmtHour(h)}</option>)}
+                      </select>
+                    </label>
+                    <label className="set-quiet-field">
+                      <span className="label-sm">to</span>
+                      <select
+                        className="set-input"
+                        value={prefs.quiet_hours_end ?? ""}
+                        disabled={prefsBusy}
+                        onChange={(e) => savePrefs({ quiet_hours_end: e.target.value === "" ? null : Number(e.target.value) })}
+                      >
+                        <option value="">off</option>
+                        {HOURS.map((h) => <option key={h} value={h}>{fmtHour(h)}</option>)}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="set-field" style={{ marginTop: 16 }}>
+                    <div className="label-sm set-field-label">timezone</div>
+                    <input
+                      className="set-input"
+                      value={prefs.timezone || ""}
+                      disabled={prefsBusy}
+                      placeholder="e.g. America/New_York"
+                      onBlur={(e) => { const tz = e.target.value.trim(); if (tz && tz !== prefs.timezone) savePrefs({ timezone: tz }); }}
+                      onChange={(e) => setPrefs({ ...prefs, timezone: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="rule" style={{ margin: "20px 0" }} />
+                  <button
+                    className="btn ghost"
+                    disabled={prefsBusy}
+                    onClick={() => savePrefs({ reply_enabled: false, digest_enabled: true })}
+                  >
+                    ◔ fewer notifications — weekly digest only
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           {section === "account" && (
             <div className="card editorial set-card">
               <div className="label" style={{ marginBottom: 12 }}>account</div>
@@ -352,6 +464,28 @@ export default function SettingsPage() {
 
       {toast && <div className={`toast toast-${toast.type}`} onClick={() => setToast(null)}>{toast.message}</div>}
     </div>
+  );
+}
+
+function Toggle({ label, hint, checked, disabled, onChange }) {
+  return (
+    <label className="set-toggle">
+      <span className="set-toggle-text">
+        <span className="set-toggle-label">{label}</span>
+        {hint && <span className="set-toggle-hint">{hint}</span>}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        disabled={disabled}
+        className={`set-switch ${checked ? "on" : ""}`}
+        onClick={() => onChange(!checked)}
+      >
+        <span className="set-switch-knob" />
+      </button>
+    </label>
   );
 }
 

@@ -16,6 +16,7 @@ import CheckinPanel from "./components/CheckinPanel";
 import MirrorCard from "./components/MirrorCard";
 import ImportModal from "./components/ImportModal";
 import WelcomeModal from "./components/WelcomeModal";
+import NotificationCenter from "./components/notifications/NotificationCenter";
 import DNACard, { DnaReveal } from "./components/DNACard";
 import LandingPage from "./pages/LandingPage";
 import { Heatmap, Stats } from "./components/Panels";
@@ -145,6 +146,7 @@ function ReadingRoomHeader({ user, tab, onTab, theme, onToggleTheme, onAddBook, 
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>DNA</span>
             </button>
           )}
+          <NotificationCenter />
           <button className="rr-theme-toggle" onClick={onToggleTheme} title="Toggle Vellum / Lamplight">
             {theme === "dark" ? "☀" : "☾"}
           </button>

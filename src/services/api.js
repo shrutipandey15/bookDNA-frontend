@@ -513,6 +513,42 @@ export async function changeHandle(handle) {
   return res.json().catch(() => ({}));
 }
 
+// ── Notifications — calm, batched, digest-default [Phase 4 / B4.x] ──
+// GET → { notifications: [{ id, tier, kind, payload, read, created_at }], unread_count }.
+// Tiers: 0 security · 1 direct-batched (e.g. echo_reply) · 2 weekly digest.
+export async function getNotifications() {
+  const res = await apiFetch("/notifications");
+  if (!res.ok) return { notifications: [], unread_count: 0 };
+  return res.json();
+}
+
+// Mark read in bulk. Pass an array of ids, or null/omit to mark ALL read.
+export async function markNotificationsRead(ids = null) {
+  const res = await apiFetch("/notifications/read", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error("Couldn't update notifications");
+}
+
+export async function getNotificationPrefs() {
+  const res = await apiFetch("/notifications/preferences");
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function updateNotificationPrefs(data) {
+  const res = await apiFetch("/notifications/preferences", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "Couldn't update preferences");
+  }
+  return res.json();
+}
+
 // ── NEW: Blob Fetcher (For Images) ──
 export async function fetchBlob(endpoint) {
   // Use apiFetch to handle auth headers automatically

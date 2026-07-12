@@ -15,10 +15,16 @@ vi.mock("../services/api", () => ({
   generateShareToken: vi.fn().mockResolvedValue({ share_token: "tok123", room_unlocks_new: [] }),
   revokeShareTokens: vi.fn().mockResolvedValue(undefined),
   changeHandle: vi.fn().mockResolvedValue({}),
+  getNotificationPrefs: vi.fn().mockResolvedValue({
+    reply_enabled: true, digest_enabled: true, quiet_hours_start: null, quiet_hours_end: null, timezone: "UTC",
+  }),
+  updateNotificationPrefs: vi.fn().mockImplementation(async (patch) => ({
+    reply_enabled: true, digest_enabled: true, quiet_hours_start: null, quiet_hours_end: null, timezone: "UTC", ...patch,
+  })),
 }));
 
 import SettingsPage from "./SettingsPage";
-import { updateSettings, generateShareToken, revokeShareTokens, changeHandle } from "../services/api";
+import { updateSettings, generateShareToken, revokeShareTokens, changeHandle, updateNotificationPrefs } from "../services/api";
 
 async function openVisibility() {
   render(<SettingsPage />);
@@ -50,6 +56,21 @@ describe("SettingsPage visibility control [F2.8 / B2.1]", () => {
     await waitFor(() =>
       expect(screen.getByRole("radio", { name: /Private/i })).toBeChecked(),
     );
+  });
+
+  it("persists notification preferences and the one-tap 'fewer' shortcut [F4.3]", async () => {
+    render(<SettingsPage />);
+    await userEvent.click(screen.getByRole("button", { name: /Notifications/i }));
+
+    // Toggling the reply switch persists reply_enabled=false.
+    const replySwitch = await screen.findByRole("switch", { name: /replies to your echoes/i });
+    await waitFor(() => expect(replySwitch).toHaveAttribute("aria-checked", "true"));
+    await userEvent.click(replySwitch);
+    expect(updateNotificationPrefs).toHaveBeenCalledWith({ reply_enabled: false });
+
+    // One-tap "fewer notifications" = digest only.
+    await userEvent.click(screen.getByRole("button", { name: /fewer notifications/i }));
+    expect(updateNotificationPrefs).toHaveBeenCalledWith({ reply_enabled: false, digest_enabled: true });
   });
 
   it("changes the pseudonymous handle [F3.1 / B3.1]", async () => {

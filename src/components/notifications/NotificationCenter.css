@@ -1,0 +1,60 @@
+/* Notification center [F4.1 / B4.1] */
+.nc-bell {
+  position: relative;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-quiet);
+  padding: 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+.nc-bell:hover { color: var(--ink); background: var(--bg-vellum); }
+.nc-bell:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+.nc-dot {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--oxblood);
+  border: 1.5px solid var(--bg-card, #fff);
+}
+
+.nc { display: flex; flex-direction: column; gap: 14px; padding: 24px; max-width: 460px; min-width: 320px; }
+.nc-head { display: flex; align-items: center; justify-content: space-between; }
+.nc-markall {
+  border: none; background: none; cursor: pointer;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--brass);
+}
+.nc-markall:hover { text-decoration: underline; }
+
+.nc-list { display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow-y: auto; }
+.nc-empty { font-family: var(--font-display); font-style: italic; color: var(--ink-quiet); padding: 20px 0; text-align: center; }
+
+.nc-item {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--rule, rgba(0,0,0,0.07));
+}
+.nc-item.unread { background: color-mix(in srgb, var(--brass) 6%, transparent); }
+.nc-item-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--brass); margin-top: 6px; flex-shrink: 0; }
+.nc-item-body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.nc-item-text { font-family: var(--font-display); font-size: 15px; line-height: 1.4; color: var(--ink); }
+.nc-item-text em { font-style: italic; }
+.nc-item-time { font-family: var(--font-mono); font-size: 10px; color: var(--ink-quiet); }
+
+/* Weekly digest card [F4.2] */
+.nc-digest {
+  border-left: 3px solid var(--brass);
+  padding: 6px 0 6px 12px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.nc-digest-label { color: var(--ink-quiet); }
+.nc-digest-line { font-family: var(--font-display); font-size: 16px; color: var(--ink); line-height: 1.4; }
+.nc-digest-memory { font-family: var(--font-display); font-style: italic; font-size: 13px; color: var(--ink-quiet); }
+
+@media (max-width: 560px) {
+  .nc { min-width: 0; width: 100%; }
+}

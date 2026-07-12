@@ -1,23 +1,63 @@
-# 📖 Book DNA — Frontend
+# 📖 BookDNA — Frontend
 
-**The interface where readers confess what books did to them.**
+**A private mirror for your reading life.**
 
-This is the React frontend for [Book DNA](https://bookdna.fdev31.space). It's where emotions meet bookshelves — a dark, moody UI built for people who feel things when they read and want proof of it.
+BookDNA is where you keep an honest record of what books *did* to you — not ratings, the actual weather they left behind — and watch the patterns add up to a portrait of who you are as a reader. Everything is private by default. The one public surface is **Echo**: a pseudonymous, book-anchored place to put the raw thing a book did to you and read others doing the same.
 
-🔗 **Live:** [bookdna.fdev31.space](https://bookdna.fdev31.space)  
-⚙️ **Backend repo:** [bookDNA](https://github.com/shrutipandey15/bookDNA)
+⚙️ **Backend repo:** [bookDNA](https://github.com/shrutipandey15/bookDNA) (FastAPI)
+
+This repo is one of a three-document set that governs the work:
+- [`ROADMAP.md`](./ROADMAP.md) — the phased task list (what's built, what's next)
+- `blueprint.md` — the product vision and reasoning
+- `audit.md` — the canonical problem list
 
 ---
 
-## What You Can Do
+## The product, in one paragraph
 
-**Build your emotional shelf.** Search for books (fuzzy-matched across Google Books, Open Library, and a self-growing local catalog), tag them with up to 24 emotions, score intensity 1–10, and write public echoes — one-line emotional verdicts visible to other readers.
+BookDNA is a private journal for readers. You log a book, tag what it did to you from a shared vocabulary of **13 emotions**, and — over time — the app reflects a **reading DNA** back at you: one of **12 archetypes** drawn from the geometry of your shelf, plus resurfaced memories ("three months ago, *this* wrecked you"). The single public surface, **Echo**, is built to be structurally incapable of becoming social media: chronological, it **ends**, and it renders **no counts of any kind** — no followers, no likes, no karma, ever.
 
-**Discover your reader DNA.** After 3+ books, generate your personality profile. The engine analyzes your emotion patterns — what you gravitate toward, what you avoid, what co-occurs — and assigns one of 8 archetypes. Export it as a shareable PNG card.
+---
 
-**See your patterns.** Emotion heatmap across your shelf. Stats breakdown. Personality history over time. Monthly recaps. The data is yours.
+## What you can do
 
-**Admin it.** If you're running an instance — dashboard with user stats, a browsable book catalog, database health, and token cleanup.
+**Keep the private mirror.**
+- Log a book with the full picture — reading status, start/finish dates, private notes, the line that hit hardest.
+- Run the **Finish Flow**: a three-beat emotional arc (start → middle → end) plus a closing thought — the signature interaction.
+- Drop a **check-in** while you're mid-book: "how's it feeling now?"
+- **Import** a whole library from a Goodreads / StoryGraph CSV so you're not staring at an empty shelf.
+- Search and filter your own shelf by title, author, or feeling.
+
+**See yourself in the data.**
+- Generate your **reading DNA** after a few books — a shareable personality card (PNG export).
+- An emotional **signature**, heatmap, and stats — described by *how* you read, never *how much*.
+- **Mirror** insights + a resurfaced memory, surfaced honestly (nothing is shown until there's enough to say).
+
+**Echo — the one public room.**
+- A minimal composer: a book/emotion anchor + the reflection, with a friction line — *say the true thing, not the clever thing.*
+- A **chronological feed that ends** ("you're caught up"), filterable by feeling. No trending, no ranking, no counts.
+- Replies (shown before any reaction), private reactions (no public tallies).
+- One-tap **report** (categorized), silent **block** and **mute**.
+- A supportive **crisis interstitial** when the backend flags self-harm content — care, not punishment.
+- A pseudonymous **handle** you control; no path from the feed to a person's other content.
+
+**Calm notifications.**
+- An in-app notification center (a presence dot, not a guilt-count), batched — "three readers replied," not three pings.
+- A weekly "your reading week" digest.
+- Full control: reply/digest switches, quiet hours, timezone, one-tap "fewer notifications."
+
+---
+
+## Design rules (enforced, not aspirational)
+
+Every screen is checked against these — they're acceptance criteria:
+
+- **No comparative metrics.** No counts that let users rank themselves against others.
+- **Feeds end.** No infinite scroll — an explicit "you're caught up."
+- **Honest states.** Real data or an honest "not enough yet." Never fabricated.
+- **Recognition over recall** — pickers, not free-text taxonomies.
+- **One primary action per screen**; progressive disclosure; calm by default.
+- **WCAG 2.2 AA is definition-of-done** — focus-trapped modals, `Esc` to close, `aria-live` for async, full keyboard parity, reduced-motion honored.
 
 ---
 
@@ -27,101 +67,103 @@ This is the React frontend for [Book DNA](https://bookdna.fdev31.space). It's wh
 |------|-----|
 | Framework | React 18 + React Router 6 |
 | Build | Vite 5 |
-| Styling | Vanilla CSS with custom properties |
-| Export | html2canvas for DNA card PNG |
-| Fonts | Cormorant Garamond — because data deserves typography |
+| Styling | Vanilla CSS with custom properties (Newsreader / Cormorant Garamond serif) |
+| Icons | lucide-react |
+| Export | html2canvas (DNA card PNG) |
+| Tests | Vitest + Testing Library + jsdom; GitHub Actions CI |
 
 No component library. No Tailwind. Every pixel is intentional.
 
 ---
 
-## Pages
+## Authentication
+
+Auth follows [`authCookieContract.md`](./authCookieContract.md):
+
+- The **access token lives in memory only** (never `localStorage` — an XSS there would be account takeover).
+- The **refresh token is an httpOnly cookie** the browser manages; JS never sees it.
+- On boot the app calls `/auth/refresh` once for a **silent login**; a single-flight refresh promise prevents the parallel-401 stampede that used to log users out at random.
+
+---
+
+## Routes
 
 | Route | What happens |
 |-------|-------------|
-| `/` | Your shelf — books as spined cards with emotion tabs, filter/sort, analytics |
-| `/login` | Auth with password strength meter, lockout countdown, client-side validation |
-| `/admin` | Dashboard, user management, book catalog browser, DB health (admin only) |
+| `/` | Your shelf — log books, DNA, heatmap, stats, mirror insights |
+| `/echoes` | Echo — the chronological, countless public feed + composer |
+| `/settings` | Profile, visibility & share links, handle, notification preferences, security |
+| `/login` | Auth with password-strength meter, lockout countdown |
+| `/u/:username` | A public profile card (visibility-gated) |
+| `/s/:token` | A shared profile card via a revocable capability link |
+| `/reset-password` | Password reset |
+| `/admin` | Dashboard, users, catalog, DB health (admin only) |
 
 ---
 
-## The Shelf
-
-Each book renders as a physical book card — spine colored by primary emotion, cover from Google Books (styled fallback if unavailable), emotion tabs on the edge, intensity bar on the side. Click to edit. Swipe to explore.
-
-Optimistic CRUD — adds, edits, and deletes happen instantly in the UI and roll back if the API disagrees.
-
----
-
-## Search
-
-The entry modal has an autocomplete search that queries the backend's three-layer engine:
-
-```
-You type "iron flam"
-      ↓
-Local catalog (trigram fuzzy match) + Google Books + Open Library
-      ↓
-Deduplicated, scored, ranked
-      ↓
-"Iron Flame" by Rebecca Yarros — first result, with cover
-```
-
-Debounced at 600ms. Minimum 3 characters. Results show cover, author, year.
-
----
-
-## Run Locally
-
-```bash
-npm install
-npm run dev     # → localhost:3000
-```
-
-Vite proxies `/api` to `localhost:8000`. Make sure the [backend](https://github.com/shrutipandey15/bookDNA) is running.
-
-### Build & Deploy
-
-```bash
-npm run build   # → dist/
-```
-
-Set `VITE_API_URL=/api` in `.env.production`. Copy `dist/` to your web server.
-
----
-
-## Project Structure
+## Project structure
 
 ```
 src/
-├── App.jsx                    Shelf, tabs, main shell
+├── App.jsx                       Shelf, routing, tabs, main shell
 ├── contexts/
-│   └── AuthContext.jsx        Login/register/logout state
+│   ├── AuthContext.jsx           Silent-login-on-boot, login/register/logout
+│   └── JournalContext.jsx        Entries, analytics, honest error/empty state
 ├── services/
-│   ├── api.js                 apiFetch + token refresh
-│   ├── offline.js             localStorage entry cache
-│   └── emotions.js            24 emotions: labels, colors, icons
+│   ├── api.js                    apiFetch (cookie auth + single-flight refresh),
+│   │                             ApiError, entries/DNA/echo/social/notifications
+│   ├── offline.js                Per-account localStorage entry cache
+│   └── emotions.js               13-emotion vocab (seeded, hydrated from /emotions)
 ├── components/
-│   ├── BookCard.jsx           Spined book card with emotion tabs
-│   ├── EntryModal.jsx         Add/edit with search autocomplete
-│   ├── DNACard.jsx            Personality card + PNG export
-│   ├── ShareModal.jsx         Native share / clipboard fallback
-│   ├── HeatmapPanel.jsx       Emotion × book matrix
-│   ├── EchoesPanel.jsx        Public emotional verdicts
-│   ├── StatsPanel.jsx         Reading statistics
-│   └── ErrorBoundary.jsx      Graceful crash handling
+│   ├── Modal.jsx                 Accessible modal baseline (focus trap, Esc, restore)
+│   ├── EntryModal.jsx            Log/edit a book — full fields + search autocomplete
+│   ├── FinishFlow.jsx            The three-beat emotional arc
+│   ├── CheckinPanel.jsx          Currently-reading check-ins
+│   ├── ImportModal.jsx           Goodreads / StoryGraph CSV import
+│   ├── MirrorCard.jsx            Weekly insight + resurfaced memory (honest-empty)
+│   ├── DNACard.jsx               Personality card + PNG export
+│   ├── WelcomeModal.jsx          First-run: "begin with one book"
+│   ├── ShelfError.jsx            Honest error state (429 / 500 / offline)
+│   ├── echo/                     Echo: Composer, Card, Thread, ReportModal, Crisis
+│   └── notifications/            NotificationCenter (bell + panel + digest card)
 ├── pages/
-│   ├── AuthPage.jsx           Login/register + password strength
-│   └── AdminPage.jsx          Dashboard, users, catalog, DB health
+│   ├── EchoesPage.jsx            The Echo feed
+│   ├── SettingsPage.jsx          Visibility, handle, notification prefs, security
+│   ├── AuthPage.jsx              Login / register
+│   └── AdminPage.jsx             Admin dashboard
 └── styles/
-    └── global.css             Theme variables, dark palette
+    └── global.css                Theme variables, palette, book-spine styles
 ```
 
 ---
 
-## What's Next
+## Run locally
 
-See [ROADMAP.md](./ROADMAP.md) — public profiles, Goodreads import, reading status tracking, DNA comparison, and eventually a community where readers find each other through what they feel.
+```bash
+npm install
+npm run dev        # → localhost:3000
+```
+
+Vite proxies `/api` to `localhost:8000` (same-origin, which the cookie auth relies on).
+Make sure the [backend](https://github.com/shrutipandey15/bookDNA) is running.
+
+```bash
+npm test           # run the suite once
+npm run test:watch # watch mode
+npm run build      # → dist/
+```
+
+Set `VITE_API_URL=/api` in `.env.production` and serve `dist/` behind a proxy that
+forwards `/api/*` to the backend on the same origin.
+
+---
+
+## What's next
+
+See [`ROADMAP.md`](./ROADMAP.md). Phases 1–4 (Foundation, the Private Mirror, Echo, and
+Calm Notifications) are built. The fuller **Profile** self-view (collections, milestones,
+aggregated history) is waiting on backend that isn't shipped yet. **Twin** (reader-matching)
+and **Chat** are deliberately parked until Echo proves itself.
 
 ---
 
