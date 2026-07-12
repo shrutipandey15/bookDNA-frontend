@@ -1,0 +1,61 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
+vi.mock("../services/api", () => ({
+  getEchoFeed: vi.fn(),
+  blockHandle: vi.fn(),
+  muteHandle: vi.fn(),
+  reportEcho: vi.fn(),
+  reportReply: vi.fn(),
+}));
+
+import EchoesPage from "./EchoesPage";
+import { getEchoFeed, blockHandle } from "../services/api";
+
+const feed = {
+  echoes: [
+    { id: "e1", handle: "reader_one", body: "first echo", primary_emotion: "grief", created_at: "2026-07-01T10:00:00Z" },
+    { id: "e2", handle: "reader_two", body: "second echo", primary_emotion: "awe", created_at: "2026-07-02T10:00:00Z" },
+  ],
+  next_cursor: null,
+  caught_up: true,
+};
+
+describe("EchoesPage feed [F3.3]", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("renders a chronological feed that ENDS with an explicit 'caught up'", async () => {
+    getEchoFeed.mockResolvedValue(feed);
+    render(<EchoesPage />);
+    await waitFor(() => expect(screen.getByText("first echo")).toBeInTheDocument());
+    expect(screen.getByText(/you're caught up/i)).toBeInTheDocument();
+    // Terminus, not infinite scroll: no "load older" button when caught up.
+    expect(screen.queryByRole("button", { name: /load older/i })).toBeNull();
+  });
+
+  it("blocking a handle removes their echoes from the feed", async () => {
+    getEchoFeed.mockResolvedValue(feed);
+    blockHandle.mockResolvedValue(undefined);
+    render(<EchoesPage />);
+    await waitFor(() => expect(screen.getByText("first echo")).toBeInTheDocument());
+
+    const firstCard = screen.getByText("first echo").closest("article");
+    await userEvent.click(within(firstCard).getByRole("button", { name: /echo actions/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /block @reader_one/i }));
+
+    await waitFor(() => expect(blockHandle).toHaveBeenCalledWith("reader_one"));
+    await waitFor(() => expect(screen.queryByText("first echo")).toBeNull());
+    // The other author's echo remains.
+    expect(screen.getByText("second echo")).toBeInTheDocument();
+  });
+
+  it("shows a load-more control (feed does not auto-infinite-scroll) when more remain", async () => {
+    getEchoFeed.mockResolvedValue({ ...feed, next_cursor: "c2", caught_up: false });
+    render(<EchoesPage />);
+    await waitFor(() => expect(screen.getByText("first echo")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /load older echoes/i })).toBeInTheDocument();
+    expect(screen.queryByText(/you're caught up/i)).toBeNull();
+  });
+});

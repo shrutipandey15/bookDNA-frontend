@@ -406,17 +406,111 @@ export async function searchBooks(query) {
   return data.results || [];
 }
 
-// ── NEW: Public Stream & Echoes ──
-export async function getPublicStream() {
-  const res = await apiFetch("/public/stream");
-  if (!res.ok) return { echoes: [], total: 0 };
+// ── Echo — the single public surface [Phase 3 / B3.x] ──
+// Design rules enforced by this contract: the feed is chronological, ENDS
+// (caught_up), and carries NO counts of any kind. Never render a count/ranking.
+
+// Chronological feed that ends. Optional anchors: a book (title[+author]) or an
+// emotion. Returns { echoes, next_cursor, caught_up }. [F3.3 / B3.3]
+export async function getEchoFeed({ cursor = null, limit = 20, bookTitle = null, bookAuthor = null, emotion = null } = {}) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  if (bookTitle) params.set("book_title", bookTitle);
+  if (bookAuthor) params.set("book_author", bookAuthor);
+  if (emotion) params.set("emotion", emotion);
+  return apiGet(`/echoes/feed?${params.toString()}`);
+}
+
+// Publish an echo. Returns { echo, held_for_review, crisis }. `crisis` is the
+// supportive interstitial payload when the self-harm classifier fires. [F3.2/F3.6]
+export async function postEcho(data) {
+  const res = await apiFetch("/echoes", { method: "POST", body: JSON.stringify(data) });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    const err = new Error(d.detail || "Couldn't post your echo");
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
-export async function getPublicEchoes(username) {
-  const res = await apiFetch(`/public/echoes/${username}`);
-  if (!res.ok) return { echoes: [], total: 0 };
+// An echo + its replies (replies come before any reaction affordance). [F3.4]
+export async function getEchoThread(id) {
+  const res = await apiFetch(`/echoes/${id}`);
+  if (!res.ok) return null;
   return res.json();
+}
+
+export async function deleteEcho(id) {
+  const res = await apiFetch(`/echoes/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Couldn't remove echo");
+}
+
+export async function postReply(echoId, body) {
+  const res = await apiFetch(`/echoes/${echoId}/replies`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "Couldn't post your reply");
+  }
+  return res.json();
+}
+
+// Private reaction — the author's aggregate is never exposed in the feed. [B3.5]
+export async function reactToEcho(echoId, kind, on = true) {
+  const res = await apiFetch(`/echoes/${echoId}/react`, {
+    method: "POST",
+    body: JSON.stringify({ kind, on }),
+  });
+  if (!res.ok) throw new Error("Couldn't react");
+}
+
+export async function reportEcho(echoId, category) {
+  const res = await apiFetch(`/echoes/${echoId}/report`, {
+    method: "POST",
+    body: JSON.stringify({ category }),
+  });
+  if (!res.ok) throw new Error("Couldn't submit report");
+  return res.json().catch(() => ({}));
+}
+
+export async function reportReply(echoId, replyId, category) {
+  const res = await apiFetch(`/echoes/${echoId}/replies/${replyId}/report`, {
+    method: "POST",
+    body: JSON.stringify({ category }),
+  });
+  if (!res.ok) throw new Error("Couldn't submit report");
+  return res.json().catch(() => ({}));
+}
+
+// ── Social: block / mute (bidirectional, cross-surface, silent) [F3.5 / B3.6-7] ──
+export async function blockHandle(handle) {
+  const res = await apiFetch("/social/blocks", { method: "POST", body: JSON.stringify({ handle }) });
+  if (!res.ok) throw new Error("Couldn't block");
+}
+export async function unblockHandle(handle) {
+  const res = await apiFetch(`/social/blocks/${encodeURIComponent(handle)}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Couldn't unblock");
+}
+export async function muteHandle(handle) {
+  const res = await apiFetch("/social/mutes", { method: "POST", body: JSON.stringify({ handle }) });
+  if (!res.ok) throw new Error("Couldn't mute");
+}
+export async function unmuteHandle(handle) {
+  const res = await apiFetch(`/social/mutes/${encodeURIComponent(handle)}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Couldn't unmute");
+}
+
+// Change the pseudonymous handle (rate-limited; old handle enters a grace window). [F3.1 / B3.1]
+export async function changeHandle(handle) {
+  const res = await apiFetch("/user/handle", { method: "PATCH", body: JSON.stringify({ handle }) });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "Couldn't change handle");
+  }
+  return res.json().catch(() => ({}));
 }
 
 // ── NEW: Blob Fetcher (For Images) ──

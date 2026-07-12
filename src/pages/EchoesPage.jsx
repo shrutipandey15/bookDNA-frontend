@@ -1,246 +1,197 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Download } from "lucide-react";
-import { getPublicStream, getPublicEchoes } from "../services/api";
-import { useAuth } from "../contexts/AuthContext";
-import { EMOTIONS, EMO_LIST } from "../services/emotions";
-import ShareModal from "../components/ShareModal";
+import { EMO_LIST } from "../services/emotions";
+import {
+  getEchoFeed, blockHandle, muteHandle, reportEcho, reportReply,
+} from "../services/api";
+import Modal from "../components/Modal";
+import EchoCard from "../components/echo/EchoCard";
+import EchoComposer from "../components/echo/EchoComposer";
+import EchoThread from "../components/echo/EchoThread";
+import ReportModal from "../components/echo/ReportModal";
 import "./EchoesPage.css";
 
-function primaryEmotionOf(entry) {
-  const first = entry.emotions?.[0];
-  const id = typeof first === "string" ? first : first?.emotion_id;
-  return { id, em: EMOTIONS[id] };
-}
-
+/**
+ * Echo — the single public surface. [Phase 3 / F3.3]
+ *
+ * Structurally incapable of becoming a social feed:
+ *   - chronological, keyset-paginated, ENDS with an explicit "you're caught up"
+ *   - renders NO counts of any kind (no trending, no "echo of the day", no totals)
+ *   - no path from the feed to a person's other content or a profile [F3.7]
+ */
 export default function EchoesPage() {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState("community");
-  const [entries, setEntries] = useState([]);
+  const [echoes, setEchoes] = useState([]);
+  const [cursor, setCursor] = useState(null);
+  const [caughtUp, setCaughtUp] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState(null);
-  const [shareConfig, setShareConfig] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState(null);
+  const [emotion, setEmotion] = useState(null); // "a feeling" anchor view
 
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    const fetch = async () => {
-      try {
-        const data = tab === "mine" && user
-          ? await getPublicEchoes(user.username)
-          : await getPublicStream();
-        if (alive) setEntries(data.echoes || []);
-      } catch (err) {
-        console.error("Failed to load echoes", err);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    };
-    fetch();
-    return () => { alive = false; };
-  }, [tab, user]);
+  const [composing, setComposing] = useState(false);
+  const [threadEcho, setThreadEcho] = useState(null);
+  const [reportTarget, setReportTarget] = useState(null); // { echo } or { echo, reply }
+  const [toast, setToast] = useState(null);
 
-  const echoes = useMemo(() => {
-    let r = entries.filter((e) => e.public_echo);
-    if (filter) r = r.filter((e) => primaryEmotionOf(e).id === filter);
-    return r;
-  }, [entries, filter]);
-
-  /* trending: emotion frequency across the stream */
-  const trending = useMemo(() => {
-    const counts = {};
-    entries.forEach((e) => {
-      const { id } = primaryEmotionOf(e);
-      if (id) counts[id] = (counts[id] || 0) + 1;
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4);
-  }, [entries]);
-
-  const presentEmotions = useMemo(() =>
-    EMO_LIST.filter(([id]) => entries.some((e) => primaryEmotionOf(e).id === id)),
-    [entries]
-  );
-
-  const onShare = (entry) => {
-    if (tab !== "mine") return;
-    setShareConfig({
-      endpoint: `/public/echo/${entry.entry_id}/story`,
-      filename: `echo-${(entry.title || "untitled").slice(0, 24).replace(/\s+/g, "-")}.png`,
-    });
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
   };
 
-  const [featured, ...rest] = echoes;
-  const centerCol = rest.slice(0, 3);
-  const rightCol = rest.slice(3, 5);
+  // Load the first page for the current anchor. Resets the list.
+  const loadFirst = useCallback(async (emo) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getEchoFeed({ emotion: emo || null });
+      setEchoes(data.echoes || []);
+      setCursor(data.next_cursor || null);
+      setCaughtUp(!!data.caught_up);
+    } catch (err) {
+      setError(err.kind ? err : { kind: "server" });
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadFirst(emotion); }, [emotion, loadFirst]);
+
+  const loadMore = async () => {
+    if (loadingMore || caughtUp || !cursor) return;
+    setLoadingMore(true);
+    try {
+      const data = await getEchoFeed({ cursor, emotion: emotion || null });
+      setEchoes((prev) => [...prev, ...(data.echoes || [])]);
+      setCursor(data.next_cursor || null);
+      setCaughtUp(!!data.caught_up);
+    } catch {
+      showToast("Couldn't load more", "error");
+    }
+    setLoadingMore(false);
+  };
+
+  // Safety actions
+  const doMute = async (echo) => {
+    try { await muteHandle(echo.handle); setEchoes((p) => p.filter((e) => e.handle !== echo.handle)); showToast(`Muted @${echo.handle}`); }
+    catch { showToast("Couldn't mute", "error"); }
+  };
+  const doBlock = async (echo) => {
+    try { await blockHandle(echo.handle); setEchoes((p) => p.filter((e) => e.handle !== echo.handle)); showToast(`Blocked @${echo.handle}`); }
+    catch { showToast("Couldn't block", "error"); }
+  };
+  const submitReport = async (category) => {
+    if (reportTarget?.reply) await reportReply(reportTarget.echo.id, reportTarget.reply.id, category);
+    else await reportEcho(reportTarget.echo.id, category);
+  };
 
   return (
     <div className="echoes-page">
       <div className="ep-masthead">
         <div>
-          <div className="label" style={{ marginBottom: 14 }}>· broadcast ·</div>
+          <div className="label" style={{ marginBottom: 14 }}>· the one public room ·</div>
           <h1 className="ep-h1">The <em>Echoes</em>.</h1>
           <p className="ep-dek">
-            One-line verdicts from readers across the catalog. Spoiler-free. Vibes only.
+            The raw thing a book did to you — and others doing the same. No followers, no
+            counts, no feed that never ends. Say the true thing.
           </p>
         </div>
         <div className="ep-head-actions">
           <button className="btn ghost" onClick={() => navigate("/")} style={{ fontSize: 12 }}>← back to shelf</button>
-          <div className="ep-tabs">
-            {["community", "mine"].map((t) => (
-              <button key={t} className={`ep-tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
-                {t === "community" ? "the world" : "mine"}
-              </button>
-            ))}
-          </div>
+          <button className="btn brass" onClick={() => setComposing(true)}>write an echo</button>
         </div>
       </div>
       <div className="rule-dbl" style={{ marginBottom: 24 }} />
 
-      {/* filter chips */}
-      {presentEmotions.length > 0 && (
-        <div className="ep-filters">
-          <div className="label" style={{ marginRight: 4 }}>filter by feeling</div>
-          <button className={`chip ${!filter ? "active" : ""}`} style={{ "--chip-c": "var(--ink)" }} onClick={() => setFilter(null)}>
-            <span className="swatch" /> all
+      {/* "A Feeling" anchor views — filter, not ranking. */}
+      <div className="ep-filters">
+        <div className="label" style={{ marginRight: 4 }}>a feeling</div>
+        <button className={`chip ${!emotion ? "active" : ""}`} style={{ "--chip-c": "var(--ink)" }} onClick={() => setEmotion(null)}>
+          <span className="swatch" /> everything
+        </button>
+        {EMO_LIST.map(([id, e]) => (
+          <button
+            key={id}
+            className={`chip ${emotion === id ? "active" : ""}`}
+            style={{ "--chip-c": e.color }}
+            onClick={() => setEmotion(emotion === id ? null : id)}
+          >
+            <span className="swatch" />{e.label.toLowerCase()}
           </button>
-          {presentEmotions.map(([id, e]) => (
-            <button
-              key={id}
-              className={`chip ${filter === id ? "active" : ""}`}
-              style={{ "--chip-c": e.color }}
-              onClick={() => setFilter(filter === id ? null : id)}
-            >
-              <span className="swatch" />{e.label.toLowerCase()}
-            </button>
-          ))}
-        </div>
-      )}
+        ))}
+      </div>
 
       {loading ? (
-        <div className="loading-screen" style={{ minHeight: 300 }}>
+        <div className="loading-screen" style={{ minHeight: 260 }}>
           <div className="loading-glyph">◈</div>
           <div className="loading-text">listening for echoes…</div>
+        </div>
+      ) : error ? (
+        <div className="empty-state" role="alert">
+          <div className="empty-glyph">⚠</div>
+          <div className="empty-title">Couldn't reach the echoes</div>
+          <div className="empty-sub">Something went wrong on our end. Try again in a moment.</div>
+          <button className="btn" style={{ marginTop: 18 }} onClick={() => loadFirst(emotion)}>try again</button>
         </div>
       ) : echoes.length === 0 ? (
         <div className="empty-state">
           <div className="empty-glyph">✦</div>
-          <div className="empty-title">No echoes yet</div>
-          <div className="empty-sub">The silence is loud.</div>
+          <div className="empty-title">{emotion ? "No echoes for this feeling yet" : "No echoes yet"}</div>
+          <div className="empty-sub">The silence is loud. Be the first to say something true.</div>
+          <button className="btn brass" style={{ marginTop: 18 }} onClick={() => setComposing(true)}>write an echo</button>
         </div>
       ) : (
-        <div className="ep-grid">
-          {featured && (
-            <EchoFeatured entry={featured} onShare={tab === "mine" ? onShare : null} />
+        <div className="ep-feed">
+          {echoes.map((echo) => (
+            <EchoCard
+              key={echo.id}
+              echo={echo}
+              onOpen={setThreadEcho}
+              onReply={setThreadEcho}
+              onReport={(e) => setReportTarget({ echo: e })}
+              onMute={doMute}
+              onBlock={doBlock}
+            />
+          ))}
+
+          {/* Feeds end. Explicit, calm terminus — no infinite scroll. */}
+          {caughtUp ? (
+            <div className="ep-caughtup">
+              <span className="ep-caughtup-glyph">◆</span>
+              You're caught up.
+            </div>
+          ) : (
+            <button className="ep-more" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? "loading…" : "load older echoes"}
+            </button>
           )}
-
-          <div className="ep-col">
-            {centerCol.map((e) => (
-              <EchoCard key={e.entry_id || e.id} entry={e} onShare={tab === "mine" ? onShare : null} />
-            ))}
-          </div>
-
-          <div className="ep-col">
-            {trending.length > 0 && (
-              <div className="card editorial">
-                <div className="label" style={{ marginBottom: 14 }}>trending feeling · this week</div>
-                {trending.map(([id, n], i) => {
-                  const e = EMOTIONS[id];
-                  if (!e) return null;
-                  return (
-                    <div key={id} className="ep-trend-row" style={{ borderBottom: i < trending.length - 1 ? "1px solid var(--rule-soft)" : "none" }}>
-                      <span className="ep-trend-dot" style={{ background: e.color }} />
-                      <span className="ep-trend-name">{e.label.toLowerCase()}</span>
-                      <span className="ep-trend-count">{n} echo{n === 1 ? "" : "es"}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {rightCol.map((e) => (
-              <EchoCardHand key={e.entry_id || e.id} entry={e} onShare={tab === "mine" ? onShare : null} />
-            ))}
-          </div>
         </div>
       )}
 
-      <ShareModal
-        isOpen={!!shareConfig}
-        onClose={() => setShareConfig(null)}
-        endpoint={shareConfig?.endpoint}
-        filename={shareConfig?.filename}
-      />
-    </div>
-  );
-}
+      {composing && (
+        <Modal onClose={() => setComposing(false)} ariaLabel="Write an echo" className="rr-modal-card" backdropClassName="rr-modal-backdrop">
+          <EchoComposer
+            onPosted={(echo) => { if (!emotion || echo?.primary_emotion === emotion) setEchoes((p) => [echo, ...p]); showToast("Echo posted"); }}
+            onClose={() => setComposing(false)}
+          />
+        </Modal>
+      )}
 
-function EchoFeatured({ entry, onShare }) {
-  const { em } = primaryEmotionOf(entry);
-  const color = em?.color || "var(--brass)";
-  return (
-    <div className="card ep-featured" style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${color} 14%, var(--bg-card)), var(--bg-card))`, borderTop: `3px solid ${color}` }}>
-      <div className="label" style={{ marginBottom: 10, color }}>✦ echo of the day</div>
-      <div className="ep-featured-quote">“{entry.public_echo}”</div>
-      <div className="ep-featured-meta">
-        <div>
-          <div className="ep-meta-title">{entry.title}</div>
-          <div className="label-sm">{entry.author}</div>
-          {entry.username && (
-            <div className="ep-meta-by">— @{entry.username}</div>
-          )}
-        </div>
-        {onShare && (
-          <button className="ep-share" onClick={() => onShare(entry)} title="Download image">
-            <Download size={16} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
+      {threadEcho && (
+        <Modal onClose={() => setThreadEcho(null)} ariaLabel="Echo thread" className="rr-modal-card" backdropClassName="rr-modal-backdrop">
+          <EchoThread
+            echoId={threadEcho.id}
+            onReport={(reply) => setReportTarget({ echo: threadEcho, reply })}
+          />
+        </Modal>
+      )}
 
-function EchoCard({ entry, onShare }) {
-  const { em } = primaryEmotionOf(entry);
-  const color = em?.color || "var(--ink)";
-  return (
-    <div className="card ep-card" style={{ borderLeft: `3px solid ${color}` }}>
-      <div className="ep-card-head">
-        <div className="label-sm" style={{ color }}>◉ {em?.label.toLowerCase() || "echo"}</div>
-        {entry.created_at && <div className="label-sm">{new Date(entry.created_at).toLocaleDateString()}</div>}
-      </div>
-      <div className="ep-card-quote">“{entry.public_echo}”</div>
-      <div className="ep-card-foot">
-        <div>
-          <div className="ep-meta-title small">{entry.title}</div>
-          <div className="label-sm">{entry.author}</div>
-        </div>
-        <div className="ep-card-by">@{entry.username || "anon"}</div>
-        {onShare && (
-          <button className="ep-share" onClick={() => onShare(entry)} title="Download image">
-            <Download size={14} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
+      {reportTarget && (
+        <Modal onClose={() => setReportTarget(null)} ariaLabel="Report content" className="rr-modal-card" backdropClassName="rr-modal-backdrop">
+          <ReportModal onSubmit={submitReport} onClose={() => setReportTarget(null)} />
+        </Modal>
+      )}
 
-function EchoCardHand({ entry, onShare }) {
-  const { em } = primaryEmotionOf(entry);
-  const color = em?.color || "var(--ink)";
-  return (
-    <div className="card ep-card-hand" style={{ borderLeft: `3px solid ${color}` }}>
-      <div className="label-sm" style={{ color, marginBottom: 10 }}>◉ {em?.label.toLowerCase() || "echo"}</div>
-      <div className="ep-hand-quote">“{entry.public_echo}”</div>
-      <div className="ep-card-foot">
-        <div className="ep-meta-title small">{entry.title}</div>
-        <div className="label-sm">@{entry.username || "anon"}</div>
-        {onShare && (
-          <button className="ep-share" onClick={() => onShare(entry)} title="Download image">
-            <Download size={14} />
-          </button>
-        )}
-      </div>
+      {toast && <div className={`toast toast-${toast.type}`} onClick={() => setToast(null)}>{toast.message}</div>}
     </div>
   );
 }

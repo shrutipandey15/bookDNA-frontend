@@ -1,0 +1,25 @@
+/* Crisis interstitial [F3.6 / B3.8] — calm, supportive, not punitive */
+.crisis { display: flex; flex-direction: column; gap: 18px; padding: 32px; max-width: 460px; align-items: center; text-align: center; }
+.crisis-glyph { font-size: 40px; color: var(--brass); }
+.crisis-message {
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--ink);
+  margin: 0;
+}
+.crisis-resources { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.crisis-resource {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 12px 16px;
+  border: 1px solid var(--rule, rgba(0,0,0,0.12));
+  border-radius: 2px;
+  background: var(--bg-vellum);
+  text-align: left;
+}
+.crisis-resource-name { font-family: var(--font-display); font-size: 15px; color: var(--ink); }
+.crisis-resource-link { color: var(--brass); font-size: 14px; text-decoration: underline; text-underline-offset: 2px; word-break: break-word; }
+.crisis-resource-detail { font-size: 13px; color: var(--ink-quiet); }
+.crisis-footer { margin-top: 4px; }
+
+@media (max-width: 560px) { .crisis { padding: 24px; } }

@@ -9,15 +9,16 @@ vi.mock("../contexts/AuthContext", () => ({
 }));
 
 vi.mock("../services/api", () => ({
-  getSettings: vi.fn().mockResolvedValue({ display_name: "Alice", profile_visibility: "private" }),
+  getSettings: vi.fn().mockResolvedValue({ display_name: "Alice", profile_visibility: "private", username: "alice" }),
   updateSettings: vi.fn().mockResolvedValue({}),
   changePassword: vi.fn(),
   generateShareToken: vi.fn().mockResolvedValue({ share_token: "tok123", room_unlocks_new: [] }),
   revokeShareTokens: vi.fn().mockResolvedValue(undefined),
+  changeHandle: vi.fn().mockResolvedValue({}),
 }));
 
 import SettingsPage from "./SettingsPage";
-import { updateSettings, generateShareToken, revokeShareTokens } from "../services/api";
+import { updateSettings, generateShareToken, revokeShareTokens, changeHandle } from "../services/api";
 
 async function openVisibility() {
   render(<SettingsPage />);
@@ -49,6 +50,16 @@ describe("SettingsPage visibility control [F2.8 / B2.1]", () => {
     await waitFor(() =>
       expect(screen.getByRole("radio", { name: /Private/i })).toBeChecked(),
     );
+  });
+
+  it("changes the pseudonymous handle [F3.1 / B3.1]", async () => {
+    render(<SettingsPage />);
+    await waitFor(() => expect(screen.getByLabelText("Public handle")).toHaveValue("alice"));
+    const input = screen.getByLabelText("Public handle");
+    await userEvent.clear(input);
+    await userEvent.type(input, "quiet_reader");
+    await userEvent.click(screen.getByRole("button", { name: /change handle/i }));
+    expect(changeHandle).toHaveBeenCalledWith("quiet_reader");
   });
 
   it("mints a share link and can revoke", async () => {

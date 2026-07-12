@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { getSettings, updateSettings, changePassword, generateShareToken, revokeShareTokens } from "../services/api";
+import { getSettings, updateSettings, changePassword, generateShareToken, revokeShareTokens, changeHandle } from "../services/api";
 import "./SettingsPage.css";
 
 const SECTIONS = [
@@ -35,6 +35,9 @@ export default function SettingsPage() {
   const [toast, setToast] = useState(null);
   const [visibility, setVisibility] = useState(null);
   const [savingVis, setSavingVis] = useState(false);
+  const [handle, setHandle] = useState("");
+  const [savedHandle, setSavedHandle] = useState("");
+  const [savingHandle, setSavingHandle] = useState(false);
   const [shareLink, setShareLink] = useState(null);
   const [shareBusy, setShareBusy] = useState(false);
 
@@ -48,9 +51,27 @@ export default function SettingsPage() {
       if (s) {
         setDisplayName(s.display_name || "");
         setVisibility(s.profile_visibility || "private");
+        setHandle(s.username || "");
+        setSavedHandle(s.username || "");
       }
     });
   }, []);
+
+  const handleChangeHandle = async () => {
+    const next = handle.trim();
+    if (!next || next === savedHandle || savingHandle) return;
+    setSavingHandle(true);
+    try {
+      await changeHandle(next);
+      setSavedHandle(next);
+      if (refreshUser) await refreshUser();
+      showToast("Handle changed. Your old handle redirects for a short grace window.", "success");
+    } catch (err) {
+      setHandle(savedHandle); // revert
+      showToast(err.message || "Couldn't change handle");
+    }
+    setSavingHandle(false);
+  };
 
   const handleVisibility = async (next) => {
     if (next === visibility || savingVis) return;
@@ -182,6 +203,28 @@ export default function SettingsPage() {
                   {saving ? "Saving" : "Save"}
                 </span>
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.18em" }}>PROFILE</span>
+              </button>
+
+              <div className="rule" style={{ margin: "24px 0" }} />
+
+              {/* Pseudonymous public handle [F3.1 / B3.1] */}
+              <div className="set-field">
+                <div className="label-sm set-field-label">public handle</div>
+                <input
+                  className="set-input"
+                  value={handle}
+                  onChange={(e) => setHandle(e.target.value)}
+                  placeholder="your-handle"
+                  maxLength={50}
+                  aria-label="Public handle"
+                />
+                <p className="set-card-d" style={{ marginTop: 8, fontSize: 13 }}>
+                  The only name others see on your echoes. Changing it is rate-limited; your old
+                  handle keeps resolving for a short "previously known as" grace window.
+                </p>
+              </div>
+              <button className="btn ghost" onClick={handleChangeHandle} disabled={savingHandle || !handle.trim() || handle.trim() === savedHandle}>
+                {savingHandle ? "changing…" : "change handle"}
               </button>
             </div>
           )}

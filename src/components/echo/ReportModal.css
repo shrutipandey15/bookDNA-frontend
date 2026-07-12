@@ -1,0 +1,22 @@
+/* Report modal [F3.5 / B3.7] */
+.rep { display: flex; flex-direction: column; gap: 12px; padding: 28px; max-width: 420px; }
+.rep-title { font-family: var(--font-display); font-size: 24px; font-style: italic; color: var(--ink); margin: 0; }
+.rep-sub { font-family: var(--font-display); font-size: 14px; color: var(--ink-quiet); margin: 0; }
+.rep-cats { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.rep-cat {
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--rule, rgba(0,0,0,0.15));
+  border-radius: 2px;
+  background: var(--bg-vellum);
+  font-family: var(--font-display); font-size: 15px; color: var(--ink);
+  cursor: pointer;
+}
+.rep-cat:hover:not(:disabled) { border-color: var(--brass); }
+.rep-cat:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.rep-cat:disabled { opacity: 0.5; cursor: default; }
+.rep-error { color: var(--oxblood); font-size: 13px; }
+.rep-footer { display: flex; justify-content: flex-end; margin-top: 6px; }
+.rep-glyph { font-size: 34px; color: var(--moss, var(--brass)); }
+
+@media (max-width: 560px) { .rep { padding: 20px; } }

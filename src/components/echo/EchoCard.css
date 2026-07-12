@@ -1,0 +1,60 @@
+/* Echo card [F3.3] — no counts, handle not linked */
+.eco-card {
+  background: var(--bg-card);
+  border: 1px solid var(--rule, rgba(0,0,0,0.1));
+  border-left: 3px solid var(--ink);
+  border-radius: 2px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.eco-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.eco-anchor { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+.eco-emo { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; }
+.eco-emo-sec { opacity: 0.75; }
+
+.eco-menu-wrap { position: relative; }
+.eco-menu-btn {
+  border: none; background: none; cursor: pointer;
+  font-size: 18px; line-height: 1; color: var(--ink-quiet);
+  padding: 2px 6px; border-radius: 2px;
+}
+.eco-menu-btn:hover { color: var(--ink); background: var(--bg-vellum); }
+.eco-menu-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+.eco-menu {
+  position: absolute; right: 0; top: 100%; z-index: 20;
+  min-width: 150px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule, rgba(0,0,0,0.15));
+  border-radius: 3px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.14);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.eco-menu button {
+  text-align: left;
+  padding: 9px 14px;
+  border: none; background: none; cursor: pointer;
+  font-family: var(--font-display); font-size: 14px; color: var(--ink);
+}
+.eco-menu button:hover { background: var(--bg-vellum); }
+.eco-menu-danger { color: var(--oxblood); }
+
+.eco-body-btn {
+  text-align: left; border: none; background: none; padding: 0; cursor: pointer; width: 100%;
+}
+.eco-body {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--ink);
+  margin: 0;
+}
+.eco-body-btn:hover .eco-body { color: var(--brass); }
+.eco-body-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; border-radius: 2px; }
+
+.eco-foot { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.eco-book { font-family: var(--font-display); font-style: italic; font-size: 13px; color: var(--ink-quiet); }
+.eco-handle { font-family: var(--font-mono); font-size: 11px; color: var(--ink-quiet); margin-left: auto; }
+.eco-date { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint, var(--ink-quiet)); }
