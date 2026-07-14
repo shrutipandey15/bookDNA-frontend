@@ -278,3 +278,12 @@
   .st-ledger-row { grid-template-columns: 28px 10px 1fr 40px; }
   .st-ledger-bar { display: none; }
 }
+
+/* Honest empty ledger [F5.3] */
+.st-ledger-empty {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink-quiet);
+  padding: 8px 0 4px;
+}
