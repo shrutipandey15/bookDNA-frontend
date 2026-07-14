@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useContext, createContext } from "react";
 import {
-  getAllEntries, getDNAProfile, getHeatmap, getStats, generateDNA,
+  getAllEntries, getDNAProfile, getPatterns, generateDNA,
   createEntry, updateEntry, deleteEntry, generateShareToken, finishEntry
 } from "../services/api";
 import { getCachedEntries, setCachedEntries } from "../services/offline";
@@ -83,27 +83,16 @@ export function JournalProvider({ children }) {
 
   // Fetch a specific analytics key only if stale or missing. No-op if already fresh.
   const ensureFresh = useCallback(async (key) => {
-    if (key === "heatmap") {
-      if (!stale.heatmap && analytics.heatmap !== null) return analytics.heatmap;
+    if (key === "patterns") {
+      // One round trip for the merged Patterns view (stats + heatmap). [F5.2]
+      if (!stale.stats && !stale.heatmap && analytics.stats !== null && analytics.heatmap !== null) return;
       try {
-        const hm = await getHeatmap();
-        if (hm) setAnalytics(prev => ({ ...prev, heatmap: hm }));
-        setStale(prev => ({ ...prev, heatmap: false }));
-        return hm;
+        const data = await getPatterns();
+        if (data) setAnalytics(prev => ({ ...prev, stats: data.stats, heatmap: data.heatmap }));
+        setStale(prev => ({ ...prev, stats: false, heatmap: false }));
       } catch (err) {
-        console.error("Heatmap fetch failed:", err);
-        setStale(prev => ({ ...prev, heatmap: false }));
-      }
-    } else if (key === "stats") {
-      if (!stale.stats && analytics.stats !== null) return analytics.stats;
-      try {
-        const st = await getStats();
-        if (st) setAnalytics(prev => ({ ...prev, stats: st }));
-        setStale(prev => ({ ...prev, stats: false }));
-        return st;
-      } catch (err) {
-        console.error("Stats fetch failed:", err);
-        setStale(prev => ({ ...prev, stats: false }));
+        console.error("Patterns fetch failed:", err);
+        setStale(prev => ({ ...prev, stats: false, heatmap: false }));
       }
     } else if (key === "profile") {
       if (!stale.profile && analytics.profile !== null) return analytics.profile;
@@ -133,9 +122,6 @@ export function JournalProvider({ children }) {
       const saved = await createEntry(data);
       setEntries(prev => { const next = prev.map(e => e.id === tempId ? saved : e); setCachedEntries(next); return next; });
       setStale({ heatmap: true, stats: true, profile: true });
-      if (saved.room_unlocks_new?.length > 0) {
-        window.dispatchEvent(new CustomEvent("room-unlock", { detail: saved.room_unlocks_new }));
-      }
       return true;
     } catch (err) {
       setEntries(prev => prev.filter(e => e.id !== tempId));
@@ -163,9 +149,6 @@ export function JournalProvider({ children }) {
     const saved = await finishEntry(id, data);
     setEntries(prev => { const next = prev.map(e => e.id === id ? saved : e); setCachedEntries(next); return next; });
     setStale({ heatmap: true, stats: true, profile: true });
-    if (saved.room_unlocks_new?.length > 0) {
-      window.dispatchEvent(new CustomEvent("room-unlock", { detail: saved.room_unlocks_new }));
-    }
     return saved;
   };
 
@@ -189,9 +172,6 @@ export function JournalProvider({ children }) {
       setAnalytics(prev => ({ ...prev, profile }));
       setStale(prev => ({ ...prev, profile: false, heatmap: true, stats: true }));
       setGenerating(false);
-      if (result?.room_unlocks_new?.length > 0) {
-        window.dispatchEvent(new CustomEvent("room-unlock", { detail: result.room_unlocks_new }));
-      }
       return true;
     } catch (err) {
       setGenerating(false);
@@ -205,9 +185,6 @@ export function JournalProvider({ children }) {
       const data = await generateShareToken();
       setShareToken(data.share_token);
       setGenerating(false);
-      if (data.room_unlocks_new?.length > 0) {
-        window.dispatchEvent(new CustomEvent("room-unlock", { detail: data.room_unlocks_new }));
-      }
       return data.share_token;
     } catch (err) {
       setGenerating(false);

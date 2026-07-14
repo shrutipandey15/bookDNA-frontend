@@ -38,6 +38,21 @@ describe("EntryModal full entry fields [F2.1 / B2.4]", () => {
     });
   });
 
+  it("does NOT expose a public-echo box that publishes to a global feed [P0-NEW-1]", () => {
+    render(<EntryModal entry={{ id: "z", title: "X", emotions: [] }} onSave={vi.fn()} onDelete={vi.fn()} onClose={vi.fn()} />);
+    // The old "one-line verdict … for the world" textarea is gone.
+    expect(screen.queryByText(/public echo/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/one-line verdict/i)).not.toBeInTheDocument();
+  });
+
+  it("save payload omits public_echo entirely", async () => {
+    const onSave = vi.fn();
+    render(<EntryModal entry={{ id: "z", title: "X", status: "finished", emotions: [] }} onSave={onSave} onDelete={vi.fn()} onClose={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(onSave).toHaveBeenCalled();
+    expect(onSave.mock.calls[0][0]).not.toHaveProperty("public_echo");
+  });
+
   it("hides the date fields for a want-to-read book", async () => {
     const { container } = render(
       <EntryModal

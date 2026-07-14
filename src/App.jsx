@@ -19,7 +19,7 @@ import WelcomeModal from "./components/WelcomeModal";
 import NotificationCenter from "./components/notifications/NotificationCenter";
 import DNACard, { DnaReveal } from "./components/DNACard";
 import LandingPage from "./pages/LandingPage";
-import { Heatmap, Stats } from "./components/Panels";
+import { Patterns } from "./components/Panels";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Shelf from "./components/Shelf";
 import { ShelfDecoration } from "./components/Shelf";
@@ -47,7 +47,6 @@ const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const EchoesPage = lazy(() => import("./pages/EchoesPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
-const ReadingRoom = lazy(() => import("./components/room/ReadingRoom"));
 
 
 function SharedProfile() {
@@ -116,13 +115,12 @@ function buildDashboardStats(entries) {
 }
 
 function ReadingRoomHeader({ user, tab, onTab, theme, onToggleTheme, onAddBook, onRevealDNA, canGenerate, generating, navigate, entriesCount }) {
+  // Four tabs — Shelf · Patterns · DNA · Echo. [F5.5]
   const tabs = [
-    { id: "shelf",   label: "Shelf",   count: entriesCount },
-    { id: "room",    label: "Room"    },
-    { id: "heatmap", label: "Heatmap" },
-    { id: "stats",   label: "Stats"   },
-    { id: "dna",     label: "DNA"     },
-    { id: "echoes",  label: "Echoes"  },
+    { id: "shelf",    label: "Shelf",    count: entriesCount },
+    { id: "patterns", label: "Patterns" },
+    { id: "dna",      label: "DNA"      },
+    { id: "echoes",   label: "Echo"     },
   ];
   const initial = (user?.display_name || user?.username || "R").trim().charAt(0).toUpperCase();
   return (
@@ -242,9 +240,6 @@ function ReadingRoomStatStrip({ stats }) {
           </div>
         </div>
       ))}
-      <div style={{ paddingLeft: 24 }}>
-        <button className="btn ghost" style={{ fontSize: 11, padding: "6px 12px" }}>view full report →</button>
-      </div>
     </div>
   );
 }
@@ -337,7 +332,7 @@ function Dashboard() {
   // Tabs are URL-driven so each view is deep-linkable and the browser back
   // button moves between them. `?view=` is the source of truth. [F1.6 / P5-4]
   const [searchParams, setSearchParams] = useSearchParams();
-  const VALID_TABS = ["shelf", "room", "heatmap", "stats", "dna"];
+  const VALID_TABS = ["shelf", "patterns", "dna"];
   const viewParam = searchParams.get("view");
   const tab = VALID_TABS.includes(viewParam) ? viewParam : "shelf";
   const setTab = (id) => {
@@ -368,8 +363,7 @@ function Dashboard() {
   const dnaCardRef = useRef(null);
 
   useEffect(() => {
-    if (tab === "heatmap") ensureFresh("heatmap");
-    if (tab === "stats") ensureFresh("stats");
+    if (tab === "patterns") ensureFresh("patterns");
     if (tab === "dna") ensureFresh("profile");
   }, [tab, ensureFresh]);
 
@@ -500,26 +494,12 @@ function Dashboard() {
           </ErrorBoundary>
         )}
 
-        {tab === "room" && (
-          <ErrorBoundary name="Room">
-            <Suspense fallback={
-              <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Building your room...</div></div>
-            }>
-              <ReadingRoom onBookClick={(entry) => setModal(entry)} username={user?.username} />
-            </Suspense>
+        {tab === "patterns" && (
+          <ErrorBoundary name="Patterns">
+            {stale.stats || stale.heatmap
+              ? <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Reading your patterns...</div></div>
+              : <Patterns stats={analytics.stats} heatmap={analytics.heatmap} />}
           </ErrorBoundary>
-        )}
-
-        {tab === "heatmap" && (
-          stale.heatmap
-            ? <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Loading heatmap...</div></div>
-            : <Heatmap data={analytics.heatmap} />
-        )}
-
-        {tab === "stats" && (
-          stale.stats
-            ? <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Loading stats...</div></div>
-            : <Stats stats={analytics.stats} />
         )}
 
 {tab === "dna" && (

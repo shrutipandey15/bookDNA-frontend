@@ -23,7 +23,6 @@ export default function EntryModal({ entry, onSave, onDelete, onClose, onFinish,
   const [intensity, setIntensity] = useState(entry?.intensity || 5);
   const [emotions, setEmotions] = useState(entry?.emotions?.map((e) => e.emotion_id) || []);
   const [quote, setQuote] = useState(entry?.quote || "");
-  const [publicEcho, setPublicEcho] = useState(entry?.public_echo || "");
   // Full entry fields [F2.1 / B2.4]: reading status, dates, private notes.
   const [status, setStatus] = useState(entry?.status || "finished");
   const [startedAt, setStartedAt] = useState(entry?.started_at || "");
@@ -102,7 +101,6 @@ export default function EntryModal({ entry, onSave, onDelete, onClose, onFinish,
       intensity,
       emotions: emotions.map((id) => ({ emotion_id: id, strength: intensity })),
       quote: quote.trim() || null,
-      public_echo: publicEcho.trim() || null,
       status,
       started_at: startedAt || null,
       finished_at: finishedAt || null,
@@ -310,21 +308,6 @@ export default function EntryModal({ entry, onSave, onDelete, onClose, onFinish,
             placeholder="Just for you — thoughts, context, where you were…"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-          />
-        </div>
-
-        <div className="em-field">
-          <div className="em-echo-head">
-            <span style={{ color: "var(--brass)" }}>✦</span>
-            <div className="label-sm">public echo</div>
-            <span className="em-echo-hint">spoiler-free. for the world.</span>
-          </div>
-          <textarea
-            className="em-input em-textarea em-echo"
-            placeholder="Your one-line verdict…"
-            value={publicEcho}
-            onChange={(e) => setPublicEcho(e.target.value)}
             rows={2}
           />
         </div>

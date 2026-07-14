@@ -160,13 +160,15 @@ export function Heatmap({ data }) {
   );
 }
 
-export function Stats({ stats }) {
+// Patterns — the merged "what does my reading look like in aggregate?" view.
+// One scroll: headline figures → heatmap → emotion ledger → rail. [F5.2]
+export function Patterns({ stats, heatmap }) {
   if (!stats || stats.total_books === 0) {
     return (
       <div className="empty-state">
         <div className="empty-glyph">№</div>
-        <div className="empty-title">Add books to see your stats</div>
-        <div className="empty-sub">The figures need fodder.</div>
+        <div className="empty-title">Not enough yet</div>
+        <div className="empty-sub">Shelve a few books and your patterns will appear here.</div>
       </div>
     );
   }
@@ -192,10 +194,10 @@ export function Stats({ stats }) {
     <div className="st-page">
       <div className="st-masthead">
         <div>
-          <div className="label" style={{ marginBottom: 14 }}>fig. 03 · the figures</div>
-          <h1 className="st-h1">By <em>the Numbers</em>.</h1>
+          <div className="label" style={{ marginBottom: 14 }}>fig. 03 · the patterns</div>
+          <h1 className="st-h1">Your <em>Patterns</em>.</h1>
         </div>
-        <div className="label">your shelf · in figures</div>
+        <div className="label">your shelf · in aggregate</div>
       </div>
       <div className="rule-dbl" style={{ marginBottom: 32 }} />
 
@@ -211,9 +213,21 @@ export function Stats({ stats }) {
         ))}
       </div>
 
+      {/* The heatmap sits between the figures and the ledger. */}
+      {heatmap && (
+        <div style={{ margin: "32px 0" }}>
+          <Heatmap data={heatmap} />
+        </div>
+      )}
+
       <div className="st-bottom">
         <div className="card editorial st-ledger">
           <div className="label" style={{ marginBottom: 18 }}>emotion rankings · the full ledger</div>
+          {ranked.length === 0 && (
+            <div className="st-ledger-empty">
+              No emotions tagged yet — tag a few books and the ledger fills in.
+            </div>
+          )}
           {ranked.map(([id, e, n], i) => {
             const pct = (n / totalBooks) * 100;
             return (
@@ -251,8 +265,8 @@ export function Stats({ stats }) {
               <div className="label" style={{ marginBottom: 12 }}>most intense read</div>
               <div className="st-hardest-title">{hardest.title}</div>
               <div className="label-sm">{hardest.author} · intensity {hardest.intensity}/10</div>
-              {hardest.public_echo && (
-                <div className="st-hardest-echo">“{hardest.public_echo}”</div>
+              {hardest.quote && (
+                <div className="st-hardest-echo">“{hardest.quote}”</div>
               )}
             </div>
           )}
