@@ -1,24 +1,66 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { EMOTIONS } from "../../services/emotions";
+import { reactToEcho, postReply } from "../../services/api";
 import "./EchoCard.css";
 
 /**
- * A single echo. [F3.3]
+ * A single echo. [F3.3 → rebuilt F6.1 / F6.2]
  *
  * DESIGN RULES enforced here:
- *  - NO counts of any kind (no likes/replies/reaction totals).
- *  - The handle is shown but is NOT a link — there is no path from the feed to a
- *    person's other content or a profile. [F3.7 "no people browsing"]
- *  - The "⋯" menu carries the safety affordances (reply / mute / block / report).
+ *  - NO public counts of any kind. A viewer sees only their OWN reaction toggle
+ *    state. The private tally ("4 underlined") is shown ONLY when the payload
+ *    carries `reaction_counts` — i.e. the viewer is the author. [F6.1]
+ *  - Reply is a PRIMARY, always-visible action in the action row — never in the
+ *    ⋯ menu. The ⋯ menu carries SAFETY actions only: mute / block / report. [F6.1]
+ *  - Replies are shown, not counted: the first replies render inline; more echoes
+ *    are reached via a neutral "read the rest →" with no number. [F6.2]
+ *  - The handle is plain text, NOT a link — no people-browsing. [F3.7]
+ *
+ * Widened EchoResponse contract this renders against (B6.1–B6.4):
+ *   my_reactions:    array of kinds OR { kind: bool } — the VIEWER'S own toggles
+ *   reaction_counts: { kind: n }  — present ONLY when the viewer is the author
+ *   replies_preview: [{ id, handle, body, created_at }]  — first ~2 replies
+ *   has_more_replies: bool
  */
+
+// Reactions are marginalia, not likes — what a reader does with a book. [F6.1]
+const REACTIONS = [
+  { kind: "felt_this",       label: "underlined",         tally: "underlined",   mark: "⌇" },
+  { kind: "adding_to_list",  label: "to my shelf",        tally: "added it",     mark: "+", requiresBook: true, shelves: true },
+  { kind: "changed_my_mind", label: "made me reconsider", tally: "reconsidered", mark: "↻" },
+];
+
+const MAX_REPLY = 500;
+
 function fmtDate(iso) {
   try { return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
   catch { return ""; }
 }
 
-export default function EchoCard({ echo, onOpen, onReply, onReport, onMute, onBlock }) {
+// Normalise my_reactions (array of kinds OR a { kind: bool } map) to a plain map.
+function toReactionMap(my) {
+  if (!my) return {};
+  if (Array.isArray(my)) return Object.fromEntries(my.map((k) => [k, true]));
+  return { ...my };
+}
+
+export default function EchoCard({ echo, onReadMore, onReport, onMute, onBlock, onToast, hiddenHandles }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+
+  const [reactions, setReactions] = useState(() => toReactionMap(echo.my_reactions));
+
+  // Inline replies: seed from the preview, append optimistically on post. [F6.2]
+  const [replies, setReplies] = useState(() => echo.replies_preview || []);
+  const [hasMore, setHasMore] = useState(!!echo.has_more_replies);
+
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [replyError, setReplyError] = useState("");
+
+  const replyBtnRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -27,9 +69,74 @@ export default function EchoCard({ echo, onOpen, onReply, onReport, onMute, onBl
     return () => document.removeEventListener("mousedown", onDoc);
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (composerOpen) textareaRef.current?.focus();
+  }, [composerOpen]);
+
   const emo = echo.primary_emotion ? EMOTIONS[echo.primary_emotion] : null;
   const color = emo?.color || "var(--ink)";
+  const hasBook = !!echo.book_title;
+
   const act = (fn) => () => { setMenuOpen(false); fn?.(echo); };
+
+  // Author-only private tally. Rendered only when reaction_counts is present.
+  const tally = useMemo(() => {
+    const counts = echo.reaction_counts;
+    if (!counts) return null;
+    const parts = REACTIONS
+      .map((r) => (counts[r.kind] > 0 ? `${counts[r.kind]} ${r.tally}` : null))
+      .filter(Boolean);
+    return parts.length ? parts.join(" · ") : null;
+  }, [echo.reaction_counts]);
+
+  const toggleReaction = async (r) => {
+    const on = !reactions[r.kind];
+    setReactions((s) => ({ ...s, [r.kind]: on })); // optimistic
+    try {
+      await reactToEcho(echo.id, r.kind, on);
+      if (on && r.shelves) onToast?.("Added to your shelf");
+    } catch {
+      setReactions((s) => ({ ...s, [r.kind]: !on })); // roll back
+      onToast?.("Couldn't save that", "error");
+    }
+  };
+
+  const openComposer = () => { setReplyError(""); setComposerOpen(true); };
+  const closeComposer = ({ restoreFocus = true } = {}) => {
+    setComposerOpen(false);
+    setReplyText("");
+    setReplyError("");
+    if (restoreFocus) replyBtnRef.current?.focus();
+  };
+
+  const submitReply = async () => {
+    const body = replyText.trim();
+    if (!body || posting) return;
+    setPosting(true);
+    setReplyError("");
+    // Optimistic: show the reply inline immediately with a temporary id. [F6.2]
+    const tempId = `tmp-${Date.now()}`;
+    const optimistic = { id: tempId, handle: "you", body, created_at: new Date().toISOString(), _pending: true };
+    setReplies((rs) => [...rs, optimistic]);
+    setReplyText("");
+    try {
+      const saved = await postReply(echo.id, body);
+      setReplies((rs) => rs.map((r) => (r.id === tempId ? saved : r)));
+      closeComposer();
+    } catch (err) {
+      setReplies((rs) => rs.filter((r) => r.id !== tempId)); // roll back
+      setReplyText(body);
+      setReplyError(err.message || "Couldn't post your reply.");
+    }
+    setPosting(false);
+  };
+
+  const onComposerKeyDown = (e) => {
+    if (e.key === "Escape") { e.stopPropagation(); closeComposer(); }
+  };
+
+  const hidden = hiddenHandles instanceof Set ? hiddenHandles : new Set(hiddenHandles || []);
+  const visibleReplies = replies.filter((r) => !hidden.has(r.handle));
 
   return (
     <article className="eco-card" style={{ borderLeft: `3px solid ${color}` }}>
@@ -47,14 +154,14 @@ export default function EchoCard({ echo, onOpen, onReply, onReport, onMute, onBl
             className="eco-menu-btn"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            aria-label="Echo actions"
+            aria-label="Safety actions"
             onClick={() => setMenuOpen((o) => !o)}
           >
             ⋯
           </button>
           {menuOpen && (
+            // Safety actions ONLY. Reply lives in the action row, not here. [F6.1]
             <div className="eco-menu" role="menu">
-              <button role="menuitem" onClick={act(onReply)}>reply</button>
               <button role="menuitem" onClick={act(onMute)}>mute @{echo.handle}</button>
               <button role="menuitem" onClick={act(onBlock)}>block @{echo.handle}</button>
               <button role="menuitem" className="eco-menu-danger" onClick={act(onReport)}>report</button>
@@ -63,10 +170,8 @@ export default function EchoCard({ echo, onOpen, onReply, onReport, onMute, onBl
         </div>
       </div>
 
-      {/* Body opens the thread (replies). Keyboard-operable. */}
-      <button className="eco-body-btn" onClick={() => onOpen?.(echo)}>
-        <p className="eco-body">{echo.body}</p>
-      </button>
+      {/* The body is the star of the card. */}
+      <p className="eco-body">{echo.body}</p>
 
       <div className="eco-foot">
         {echo.book_title && (
@@ -78,6 +183,83 @@ export default function EchoCard({ echo, onOpen, onReply, onReport, onMute, onBl
         <span className="eco-handle">@{echo.handle}</span>
         <span className="eco-date">{fmtDate(echo.created_at)}</span>
       </div>
+
+      {/* Author-only private tally — the witness payoff. Quiet, never a badge. [F6.1] */}
+      {tally && <div className="eco-tally">{tally}</div>}
+
+      {/* ACTION ROW — always visible. Reactions + reply. [F6.1] */}
+      <div className="eco-actions" role="group" aria-label="Echo actions">
+        {REACTIONS.map((r) => {
+          if (r.requiresBook && !hasBook) return null; // hide "to my shelf" with no anchor
+          const on = !!reactions[r.kind];
+          return (
+            <button
+              key={r.kind}
+              type="button"
+              className={`eco-act eco-react ${on ? "on" : ""}`}
+              aria-pressed={on}
+              onClick={() => toggleReaction(r)}
+            >
+              <span className="eco-act-mark" aria-hidden="true">{r.mark}</span>
+              {r.label}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          ref={replyBtnRef}
+          className="eco-act eco-reply-btn"
+          aria-expanded={composerOpen}
+          onClick={() => (composerOpen ? closeComposer() : openComposer())}
+        >
+          <span className="eco-act-mark" aria-hidden="true">↩</span>
+          reply
+        </button>
+      </div>
+
+      {/* Inline reply composer — on the card, not a modal. [F6.2] */}
+      {composerOpen && (
+        <div className="eco-composer">
+          <label className="sr-only" htmlFor={`reply-${echo.id}`}>Your reply to @{echo.handle}</label>
+          <textarea
+            id={`reply-${echo.id}`}
+            ref={textareaRef}
+            className="eco-reply-input"
+            placeholder="Say something true…"
+            value={replyText}
+            maxLength={MAX_REPLY}
+            rows={2}
+            onChange={(e) => setReplyText(e.target.value)}
+            onKeyDown={onComposerKeyDown}
+          />
+          {replyError && <div className="eco-reply-error" role="alert">{replyError}</div>}
+          <div className="eco-composer-foot">
+            <button type="button" className="eco-composer-cancel" onClick={() => closeComposer()}>cancel</button>
+            <button type="button" className="btn brass" onClick={submitReply} disabled={!replyText.trim() || posting}>
+              {posting ? "posting…" : "reply"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Inline replies — shown, never counted. [F6.2] */}
+      {visibleReplies.length > 0 && (
+        <ul className="eco-replies" aria-live="polite">
+          {visibleReplies.map((r) => (
+            <li key={r.id} className={`eco-reply ${r._pending ? "pending" : ""}`}>
+              <span className="eco-reply-handle">@{r.handle}</span>
+              <span className="eco-reply-body">{r.body}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* "read the rest →" — only if more exist; NO number. [F6.2] */}
+      {hasMore && (
+        <button type="button" className="eco-readrest" onClick={() => onReadMore?.(echo)}>
+          read the rest →
+        </button>
+      )}
     </article>
   );
 }

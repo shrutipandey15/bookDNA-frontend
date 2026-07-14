@@ -42,7 +42,7 @@ describe("EchoesPage feed [F3.3]", () => {
     await waitFor(() => expect(screen.getByText("first echo")).toBeInTheDocument());
 
     const firstCard = screen.getByText("first echo").closest("article");
-    await userEvent.click(within(firstCard).getByRole("button", { name: /echo actions/i }));
+    await userEvent.click(within(firstCard).getByRole("button", { name: /safety actions/i }));
     await userEvent.click(screen.getByRole("menuitem", { name: /block @reader_one/i }));
 
     await waitFor(() => expect(blockHandle).toHaveBeenCalledWith("reader_one"));
@@ -57,5 +57,21 @@ describe("EchoesPage feed [F3.3]", () => {
     await waitFor(() => expect(screen.getByText("first echo")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /load older echoes/i })).toBeInTheDocument();
     expect(screen.queryByText(/you're caught up/i)).toBeNull();
+  });
+
+  it("makes all 13 emotion chips reachable in the filter row [F6.3 / P5-5]", async () => {
+    getEchoFeed.mockResolvedValue(feed);
+    render(<EchoesPage />);
+    await waitFor(() => expect(screen.getByText("first echo")).toBeInTheDocument());
+    const filters = screen.getByText("a feeling").closest(".ep-filters");
+    // 13 canonical emotions + the "everything" reset chip = 14 chips.
+    expect(within(filters).getAllByRole("button")).toHaveLength(14);
+  });
+
+  it("renders NO public count anywhere across the feed cards [F6.5]", async () => {
+    getEchoFeed.mockResolvedValue(feed);
+    const { container } = render(<EchoesPage />);
+    await waitFor(() => expect(screen.getByText("first echo")).toBeInTheDocument());
+    expect(container.textContent).not.toMatch(/\d+\s*(likes?|replies|reactions?|underlined|added|echoes)/i);
   });
 });

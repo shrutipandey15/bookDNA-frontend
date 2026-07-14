@@ -33,6 +33,8 @@ export default function EchoesPage() {
   const [threadEcho, setThreadEcho] = useState(null);
   const [reportTarget, setReportTarget] = useState(null); // { echo } or { echo, reply }
   const [toast, setToast] = useState(null);
+  // Handles the viewer has muted/blocked — their replies never render inline. [F6.5]
+  const [hiddenHandles, setHiddenHandles] = useState(() => new Set());
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -70,13 +72,15 @@ export default function EchoesPage() {
     setLoadingMore(false);
   };
 
+  const hide = (handle) => setHiddenHandles((s) => new Set(s).add(handle));
+
   // Safety actions
   const doMute = async (echo) => {
-    try { await muteHandle(echo.handle); setEchoes((p) => p.filter((e) => e.handle !== echo.handle)); showToast(`Muted @${echo.handle}`); }
+    try { await muteHandle(echo.handle); hide(echo.handle); setEchoes((p) => p.filter((e) => e.handle !== echo.handle)); showToast(`Muted @${echo.handle}`); }
     catch { showToast("Couldn't mute", "error"); }
   };
   const doBlock = async (echo) => {
-    try { await blockHandle(echo.handle); setEchoes((p) => p.filter((e) => e.handle !== echo.handle)); showToast(`Blocked @${echo.handle}`); }
+    try { await blockHandle(echo.handle); hide(echo.handle); setEchoes((p) => p.filter((e) => e.handle !== echo.handle)); showToast(`Blocked @${echo.handle}`); }
     catch { showToast("Couldn't block", "error"); }
   };
   const submitReport = async (category) => {
@@ -145,11 +149,12 @@ export default function EchoesPage() {
             <EchoCard
               key={echo.id}
               echo={echo}
-              onOpen={setThreadEcho}
-              onReply={setThreadEcho}
+              onReadMore={setThreadEcho}
               onReport={(e) => setReportTarget({ echo: e })}
               onMute={doMute}
               onBlock={doBlock}
+              onToast={showToast}
+              hiddenHandles={hiddenHandles}
             />
           ))}
 
@@ -157,7 +162,10 @@ export default function EchoesPage() {
           {caughtUp ? (
             <div className="ep-caughtup">
               <span className="ep-caughtup-glyph">◆</span>
-              You're caught up.
+              <span className="ep-caughtup-line">You're caught up.</span>
+              <button className="ep-caughtup-cta" onClick={() => setComposing(true)}>
+                Add your own →
+              </button>
             </div>
           ) : (
             <button className="ep-more" onClick={loadMore} disabled={loadingMore}>

@@ -171,22 +171,31 @@
 .ep-feed {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 620px;
+  gap: 20px;
+  max-width: 680px;
   margin: 0 auto;
 }
 .ep-caughtup {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 32px 0 12px;
+  padding: 40px 0 16px;
   font-family: var(--font-display);
   font-style: italic;
   font-size: 16px;
   color: var(--ink-quiet);
 }
-.ep-caughtup-glyph { color: var(--brass); font-style: normal; }
+.ep-caughtup-glyph { color: var(--brass); font-style: normal; font-size: 18px; }
+.ep-caughtup-line { }
+.ep-caughtup-cta {
+  border: none; background: none; cursor: pointer;
+  font-family: var(--font-mono); font-style: normal; font-size: 11px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass);
+}
+.ep-caughtup-cta:hover { text-decoration: underline; }
+.ep-caughtup-cta:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; border-radius: 2px; }
 .ep-more {
   align-self: center;
   margin-top: 8px;

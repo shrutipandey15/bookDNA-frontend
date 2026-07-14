@@ -11,9 +11,9 @@ import "./EchoThread.css";
  * a separate endpoint), so here they are just silent personal toggles. [B3.5]
  */
 const REACTIONS = [
-  { kind: "felt_this",        label: "felt this" },
-  { kind: "changed_my_mind",  label: "changed my mind" },
-  { kind: "adding_to_list",   label: "adding to list" },
+  { kind: "felt_this",        label: "underlined" },
+  { kind: "adding_to_list",   label: "to my shelf" },
+  { kind: "changed_my_mind",  label: "made me reconsider" },
 ];
 
 const MAX_REPLY = 500;
