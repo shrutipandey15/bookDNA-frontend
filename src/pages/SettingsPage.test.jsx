@@ -9,7 +9,7 @@ vi.mock("../contexts/AuthContext", () => ({
 }));
 
 vi.mock("../services/api", () => ({
-  getSettings: vi.fn().mockResolvedValue({ display_name: "Alice", profile_visibility: "private", username: "alice" }),
+  getSettings: vi.fn().mockResolvedValue({ display_name: "Alice", profile_visibility: "private", username: "alice", reads_for: [] }),
   updateSettings: vi.fn().mockResolvedValue({}),
   changePassword: vi.fn(),
   generateShareToken: vi.fn().mockResolvedValue({ share_token: "tok123", room_unlocks_new: [] }),
@@ -21,6 +21,7 @@ vi.mock("../services/api", () => ({
   updateNotificationPrefs: vi.fn().mockImplementation(async (patch) => ({
     reply_enabled: true, digest_enabled: true, quiet_hours_start: null, quiet_hours_end: null, timezone: "UTC", ...patch,
   })),
+  setReadFor: vi.fn().mockResolvedValue({}),
 }));
 
 import SettingsPage from "./SettingsPage";

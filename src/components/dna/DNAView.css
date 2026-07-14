@@ -1,0 +1,184 @@
+/* Phase 7 — DNA / Insight presentation. Facts with confidence, no mysticism. */
+
+.dna-view {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 0 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+}
+
+.dna-view-head { display: flex; flex-direction: column; gap: 6px; }
+.dna-view-h1 {
+  font-family: var(--font-display);
+  font-size: 46px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink);
+}
+.dna-readfor-line {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: var(--ink-quiet);
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+.dna-readfor-edit {
+  border: none; background: none; cursor: pointer; padding: 0;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em;
+  color: var(--brass); text-decoration: underline; text-underline-offset: 2px;
+}
+.dna-readfor-edit:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+/* Section labels — the quiet all-caps rubric above each block. */
+.dna-section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-quiet);
+  margin: 0 0 14px;
+}
+
+/* ── Insights ── */
+.insight { display: flex; flex-direction: column; gap: 8px; }
+.insight-lead {
+  font-family: var(--font-display);
+  font-size: 18px; font-style: italic;
+  color: var(--ink-quiet);
+  margin: 0;
+}
+.insight-text {
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 1.45;
+  color: var(--ink);
+  margin: 0;
+}
+.insight--headline .insight-text {
+  font-size: 27px;
+  line-height: 1.32;
+  letter-spacing: -0.01em;
+}
+.insight-foot {
+  display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint, var(--ink-quiet));
+}
+.insight-rarity { color: var(--brass); }
+
+.dna-more-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 22px; }
+
+/* ── Evolution ── */
+.evo { display: flex; flex-direction: column; gap: 22px; }
+.evo-drift { display: flex; flex-direction: column; gap: 12px; }
+.evo-drift-arrow {
+  display: flex; align-items: baseline; gap: 12px;
+  font-family: var(--font-display);
+  font-size: 30px; font-weight: 400;
+}
+.evo-drift-mark { color: var(--ink-quiet); font-size: 24px; }
+.evo-drift-summary {
+  font-family: var(--font-display);
+  font-size: 17px; line-height: 1.5; color: var(--ink);
+  margin: 0; max-width: 52ch;
+}
+.evo-spark {
+  display: flex; align-items: flex-end; gap: 5px;
+  height: 46px; padding: 4px 0;
+}
+.evo-spark-bar { flex: 1 1 0; min-width: 6px; border-radius: 1px 1px 0 0; opacity: 0.85; }
+
+.evo-gap {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  border-top: 1px solid var(--rule, rgba(0,0,0,0.1));
+  padding-top: 20px;
+}
+.evo-gap-col { display: flex; flex-direction: column; gap: 8px; }
+.evo-gap-name { font-family: var(--font-display); font-size: 18px; color: var(--ink); }
+.evo-comp { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--bg-vellum); }
+.evo-comp-seg { height: 100%; }
+
+.evo-events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.evo-event { display: flex; align-items: baseline; gap: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-quiet); }
+.evo-event-mark { color: var(--brass); }
+.evo-event-text em { font-style: normal; color: var(--ink); font-weight: 600; }
+
+/* ── Portrait (the fingerprint) ── */
+.dna-portrait-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.dna-portrait-row { display: grid; grid-template-columns: 120px 1fr auto; align-items: center; gap: 12px; }
+.dna-portrait-name { font-family: var(--font-display); font-size: 15px; color: var(--ink); }
+.dna-portrait-track { height: 8px; background: var(--bg-vellum); border-radius: 999px; overflow: hidden; }
+.dna-portrait-fill { display: block; height: 100%; border-radius: 999px; }
+.dna-portrait-count { font-family: var(--font-mono); font-size: 11px; color: var(--ink-quiet); white-space: nowrap; }
+
+/* ── Archetype (demoted) ── */
+.dna-archetype { display: flex; flex-direction: column; gap: 16px; }
+.dna-arch-strip { display: flex; align-items: flex-start; gap: 14px; }
+.dna-arch-glyph { font-size: 30px; line-height: 1; }
+.dna-arch-name { font-family: var(--font-display); font-size: 22px; color: var(--ink); }
+.dna-arch-desc { font-family: var(--font-display); font-size: 15px; line-height: 1.5; color: var(--ink-quiet); margin: 4px 0 0; max-width: 54ch; }
+.dna-arch-card { display: flex; justify-content: center; padding-top: 8px; }
+
+/* ── Not yet (locked) ── */
+.dna-locked-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.dna-locked-row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.dna-locked-name { font-family: var(--font-display); font-size: 16px; color: var(--ink-quiet); }
+.dna-locked-reason { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint, var(--ink-quiet)); }
+
+/* ── Honest empty state (the gate) ── */
+.dna-gate {
+  max-width: 560px; margin: 0 auto; padding: 60px 24px;
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px;
+}
+.dna-gate-glyph { font-size: 30px; color: var(--brass); opacity: 0.8; }
+.dna-gate-head {
+  font-family: var(--font-display); font-size: 34px; font-weight: 400;
+  letter-spacing: -0.015em; color: var(--ink); margin: 0;
+}
+.dna-gate-promise {
+  font-family: var(--font-display); font-style: italic; font-size: 19px;
+  line-height: 1.5; color: var(--ink); margin: 0; max-width: 34ch;
+}
+.dna-gate-sub { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; color: var(--ink-quiet); margin: 0; }
+.dna-gate-note {
+  margin-top: 10px; font-family: var(--font-display); font-size: 14px;
+  line-height: 1.6; color: var(--ink-quiet); max-width: 42ch;
+}
+.dna-gate-note em { font-style: italic; color: var(--ink); }
+.dna-ready-btn { margin-top: 6px; }
+
+/* ── Read-for question ── */
+.readfor { display: flex; flex-direction: column; gap: 16px; max-width: 460px; }
+.readfor-title { font-family: var(--font-display); font-size: 26px; font-weight: 400; color: var(--ink); margin: 0; }
+.readfor-why { font-family: var(--font-display); font-size: 15px; line-height: 1.5; color: var(--ink-quiet); margin: 0; }
+.readfor-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.readfor-chip {
+  padding: 8px 14px; border: 1px solid var(--rule, rgba(0,0,0,0.18)); border-radius: 999px;
+  background: var(--bg-vellum); font-family: var(--font-display); font-size: 14px; color: var(--ink-quiet); cursor: pointer;
+}
+.readfor-chip:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-quiet); }
+.readfor-chip:disabled { opacity: 0.4; cursor: default; }
+.readfor-chip.on {
+  color: var(--ink); font-weight: 600; border-color: var(--brass);
+  background: color-mix(in srgb, var(--brass) 14%, var(--bg-vellum));
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.readfor-chip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.readfor-error { color: var(--oxblood); font-size: 13px; }
+.readfor-actions { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
+.readfor-skip { border: none; background: none; cursor: pointer; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-quiet); }
+.readfor-skip:hover { color: var(--ink); }
+
+@media (max-width: 640px) {
+  .dna-view-h1 { font-size: 34px; }
+  .evo-gap { grid-template-columns: 1fr; }
+  .dna-portrait-row { grid-template-columns: 92px 1fr auto; }
+  .insight--headline .insight-text { font-size: 22px; }
+  .evo-drift-arrow { font-size: 24px; }
+}

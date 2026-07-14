@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { getSettings, updateSettings, changePassword, generateShareToken, revokeShareTokens, changeHandle, getNotificationPrefs, updateNotificationPrefs } from "../services/api";
+import { getSettings, updateSettings, changePassword, generateShareToken, revokeShareTokens, changeHandle, getNotificationPrefs, updateNotificationPrefs, setReadFor } from "../services/api";
+import ReadForQuestion from "../components/dna/ReadForQuestion";
 import "./SettingsPage.css";
 
 const SECTIONS = [
@@ -46,6 +47,8 @@ export default function SettingsPage() {
   const [shareBusy, setShareBusy] = useState(false);
   const [prefs, setPrefs] = useState(null);
   const [prefsBusy, setPrefsBusy] = useState(false);
+  const [readFor, setReadForState] = useState([]);
+  const [savingReadFor, setSavingReadFor] = useState(false);
 
   const showToast = (message, type = "error") => {
     setToast({ message, type });
@@ -59,6 +62,7 @@ export default function SettingsPage() {
         setVisibility(s.profile_visibility || "private");
         setHandle(s.username || "");
         setSavedHandle(s.username || "");
+        setReadForState(s.reads_for || []); // stated preference lives on /user/settings [F7.7]
       }
     });
   }, []);
@@ -66,6 +70,12 @@ export default function SettingsPage() {
   useEffect(() => {
     getNotificationPrefs().then((p) => { if (p) setPrefs(p); });
   }, []);
+
+  const handleSaveReadFor = async (values) => {
+    setSavingReadFor(true);
+    try { await setReadFor(values); setReadForState(values); showToast("Saved what you read for.", "success"); }
+    finally { setSavingReadFor(false); }
+  };
 
   // Persist a partial prefs change optimistically; revert on failure.
   const savePrefs = async (patch) => {
@@ -252,6 +262,16 @@ export default function SettingsPage() {
               <button className="btn ghost" onClick={handleChangeHandle} disabled={savingHandle || !handle.trim() || handle.trim() === savedHandle}>
                 {savingHandle ? "changing…" : "change handle"}
               </button>
+
+              <div className="rule" style={{ margin: "24px 0" }} />
+
+              {/* What you read for — feeds the stated-vs-revealed insight class. [F7.7] */}
+              <ReadForQuestion
+                value={readFor}
+                onSave={handleSaveReadFor}
+                saving={savingReadFor}
+                embedded
+              />
             </div>
           )}
 

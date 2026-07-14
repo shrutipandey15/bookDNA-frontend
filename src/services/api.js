@@ -293,11 +293,33 @@ export async function deleteEntry(id) {
   }
 }
 
-// ── DNA ──
+// ── DNA / Insight [Phase 7 — real backend contract, app/services/dna_insights.build_dna] ──
+// GET /dna/profile returns the owner's private "v2" mirror. ALL prose is hand-templated
+// on the BACKEND and filled with hard data — the frontend NEVER generates insight copy
+// (no LLM), it only renders `insight.text`. [F7.5] The mirror AUTO-COMPUTES on read
+// (no manual generate needed). Shape:
+//   Below the gate:  { enough: false, book_count, needed, message }
+//   Above the gate:  {
+//     enough: true,
+//     book_count,
+//     archetype: { id, name, description, color, glyph, blind_spots, comfort_tropes }, // DEMOTED
+//     insights: [{ category, variant, text, n, surprise }],  // ranked by surprise; basis = n [F7.2]
+//     locked:   [{ category, unlocks_at, reason }],           // "not yet", real reason [F7.4]
+//     profiles: { enduring: { slug: weight }, current: { slug: weight } }, // who you've been vs lately
+//     drift: number,                                          // 0..1 magnitude of the shift [F7.3]
+//     reads_for: string[] | null,                             // stated emotion slugs [F7.7]
+//   }
 export async function getDNAProfile() {
   const res = await apiFetch("/dna/profile");
   if (!res.ok) return null;
   return res.json();
+}
+
+// "What do you read for" is a stated preference stored on the user as 1–2 canonical
+// EMOTION slugs; it lives on PATCH /user/settings (it dirties the DNA cache so the
+// stated-vs-revealed insight recomputes). [F7.7 / B7.1]
+export async function setReadFor(values) {
+  return updateSettings({ reads_for: values && values.length ? values : null });
 }
 
 export async function generateDNA() {

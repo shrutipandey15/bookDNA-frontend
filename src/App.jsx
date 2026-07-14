@@ -4,7 +4,7 @@ import { Routes, Route, useParams, Link, useNavigate, Navigate, Outlet, useSearc
 import { useAuth } from "./contexts/AuthContext";
 import { useJournal, JournalProvider } from "./contexts/JournalContext";
 import { saveCardAsImage } from "./utils/cardUtils";
-import { getSharedDNA, getEmotionVocab } from "./services/api";
+import { getSharedDNA, getEmotionVocab, setReadFor } from "./services/api";
 import AuthPage from "./pages/AuthPage";
 import BookCard from "./components/BookCard";
 import EmptyShelf from "./components/EmptyShelf";
@@ -17,7 +17,10 @@ import MirrorCard from "./components/MirrorCard";
 import ImportModal from "./components/ImportModal";
 import WelcomeModal from "./components/WelcomeModal";
 import NotificationCenter from "./components/notifications/NotificationCenter";
-import DNACard, { DnaReveal } from "./components/DNACard";
+import DNACard from "./components/DNACard";
+import DNAView from "./components/dna/DNAView";
+import ReadForQuestion from "./components/dna/ReadForQuestion";
+import { MIN_BOOKS } from "./components/dna/constants";
 import LandingPage from "./pages/LandingPage";
 import { Patterns } from "./components/Panels";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -140,7 +143,7 @@ function ReadingRoomHeader({ user, tab, onTab, theme, onToggleTheme, onAddBook, 
           {canGenerate && tab !== "dna" && (
             <button className="btn brass" onClick={onRevealDNA} disabled={generating} style={{ fontSize: 12, padding: "9px 18px" }}>
               <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 15 }}>
-                {generating ? "Reading" : "Reveal"}
+                {generating ? "Reading" : "Read"}
               </span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>DNA</span>
             </button>
@@ -191,7 +194,7 @@ function ReadingRoomHero({ entries, stats, user, onBookClick, onRevealDNA, canGe
         <div className="rr-hero-cta">
           {canGenerate && (
             <button className="btn brass" onClick={onRevealDNA} disabled={generating} style={{ fontSize: 13 }}>
-              <span style={{ fontStyle: "italic", fontFamily: "var(--font-display)" }}>Reveal</span> your DNA →
+              <span style={{ fontStyle: "italic", fontFamily: "var(--font-display)" }}>Read</span> your DNA →
             </button>
           )}
           <button className="btn ghost" style={{ fontSize: 12 }} onClick={() => document.querySelector(".rr-stacks")?.scrollIntoView({ behavior: "smooth" })}>
@@ -360,12 +363,23 @@ function Dashboard() {
   const [sortBy, setSortBy] = useState("date");
   const [view, setView] = useState("cover");
   const [toast, setToast] = useState(null);
+  const [showReadFor, setShowReadFor] = useState(false);
   const dnaCardRef = useRef(null);
 
   useEffect(() => {
     if (tab === "patterns") ensureFresh("patterns");
     if (tab === "dna") ensureFresh("profile");
   }, [tab, ensureFresh]);
+
+  // Ask "what do you read for?" ONCE — at the moment the user first opens DNA,
+  // a natural point of curiosity. Skippable, editable later in settings. [F7.7]
+  useEffect(() => {
+    if (tab !== "dna") return;
+    let asked = true;
+    try { asked = !!localStorage.getItem("bookdna_readfor_asked"); } catch { /* ignore */ }
+    const answered = (analytics.profile?.reads_for || []).length > 0;
+    if (!asked && !answered) setShowReadFor(true);
+  }, [tab, analytics.profile]);
 
   const showToast = (message, type = "error") => {
     setToast({ message, type });
@@ -410,17 +424,25 @@ function Dashboard() {
     return saved;
   };
   const handleGenerateDNA = async () => {
-    try { await generate(); setTab("dna"); showToast("Your DNA has been revealed ✦", "success"); }
+    try { await generate(); setTab("dna"); showToast("Your DNA is ready.", "success"); }
     catch (err) { showToast(err.message || "Failed to generate DNA"); }
   };
   const handleSaveCard = async () => {
     try { await saveCardAsImage(dnaCardRef.current, user?.username); showToast("Card saved", "success"); }
     catch { showToast("Couldn't save card — try a screenshot instead."); }
   };
+  const markReadForAsked = () => { try { localStorage.setItem("bookdna_readfor_asked", "1"); } catch { /* ignore */ } };
+  const handleSaveReadFor = async (values) => {
+    await setReadFor(values);              // let errors surface inline in ReadForQuestion
+    markReadForAsked();
+    setShowReadFor(false);
+    showToast("Saved. The app will watch for the gap.", "success");
+  };
+  const skipReadFor = () => { markReadForAsked(); setShowReadFor(false); };
 
   if (loading) return <div className="loading-screen"><div className="loading-glyph">◈</div><div className="loading-text">Loading library...</div></div>;
 
-  const canGenerate = entries.length >= 3;
+  const canGenerate = entries.length >= MIN_BOOKS;
 
   return (
     <div className="app">
@@ -461,10 +483,10 @@ function Dashboard() {
                 {!canGenerate && (
                   <div className="progress-wrap">
                     <div className="progress-info">
-                      DNA progress<span className="progress-count">{entries.length} / 3</span>
+                      DNA progress<span className="progress-count">{entries.length} / {MIN_BOOKS}</span>
                     </div>
                     <div className="progress-track">
-                      <div className="progress-fill" style={{ width: `${Math.min(100, (entries.length / 3) * 100)}%` }} />
+                      <div className="progress-fill" style={{ width: `${Math.min(100, (entries.length / MIN_BOOKS) * 100)}%` }} />
                     </div>
                   </div>
                 )}
@@ -504,21 +526,14 @@ function Dashboard() {
 
 {tab === "dna" && (
   <ErrorBoundary name="DNA">
-    {analytics.profile?.personality ? (
-      <DnaReveal
-        profile={analytics.profile}
-        username={user?.username}
-        onSave={handleSaveCard}
-        archetypes={analytics.archetypes || []}
-      />
-    ) : (
-      <div className="empty-state">
-        <div className="empty-glyph">◈</div>
-        <div className="empty-title">Not enough data yet</div>
-        <div className="empty-sub">Shelve {Math.max(0, 3 - entries.length)} more book{3 - entries.length === 1 ? "" : "s"} to reveal your DNA.</div>
-        <button className="back-btn" onClick={() => setTab("shelf")}>← back to shelf</button>
-      </div>
-    )}
+    <DNAView
+      profile={analytics.profile}
+      username={user?.username}
+      onSave={handleSaveCard}
+      onEditReadFor={() => setShowReadFor(true)}
+      cardRef={dnaCardRef}
+      bookCount={entries.length}
+    />
   </ErrorBoundary>
 )}
       </main>
@@ -573,6 +588,21 @@ function Dashboard() {
           <WelcomeModal
             onBegin={() => { dismissWelcome(); setModal("new"); }}
             onDismiss={dismissWelcome}
+          />
+        </Modal>
+      )}
+
+      {showReadFor && (
+        <Modal
+          onClose={skipReadFor}
+          ariaLabel="What do you read for"
+          className="rr-modal-card"
+          backdropClassName="rr-modal-backdrop"
+        >
+          <ReadForQuestion
+            value={analytics.profile?.reads_for || []}
+            onSave={handleSaveReadFor}
+            onSkip={skipReadFor}
           />
         </Modal>
       )}
