@@ -321,11 +321,13 @@ export async function getStats() {
   return res.json();
 }
 
-export async function getDNAHistory() {
-  const res = await apiFetch("/dna/history");
-  if (!res.ok) return [];
-  return res.json();
+// Stats + heatmap in one round trip, backing the merged Patterns view. [F5.2 / B5.4]
+export async function getPatterns() {
+  const res = await apiFetch("/dna/patterns");
+  if (!res.ok) return null;
+  return res.json(); // { stats, heatmap }
 }
+
 
 export async function generateShareToken() {
   const res = await apiFetch("/user/share-token", { method: "POST" });
@@ -619,25 +621,4 @@ export async function fetchBlob(endpoint) {
   const res = await apiFetch(endpoint);
   if (!res.ok) throw new Error("Failed to fetch image");
   return res.blob();
-}
-
-// ── Reading Room ──
-export async function getRoom() {
-  const res = await apiFetch("/user/room");
-  if (!res.ok) return { layout: null, unlocks: [], decorations: [] };
-  return res.json();
-}
-
-export async function saveRoomLayout(shelves) {
-  const res = await apiFetch("/user/room", {
-    method: "PATCH",
-    body: JSON.stringify({ shelves }),
-  });
-  return res.json();
-}
-
-export async function getPublicRoom(username) {
-  const res = await apiFetch(`/public/${username}/room`);
-  if (!res.ok) return { layout: null, entries: {} };
-  return res.json();
 }
