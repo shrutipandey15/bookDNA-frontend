@@ -226,11 +226,11 @@ function ReadingRoomHero({ entries, stats, user, onBookClick, onRevealDNA, canGe
 }
 
 function ReadingRoomStatStrip({ stats }) {
-  const top = EMOTIONS[stats.topEmotion?.[0]] || { label: "—", color: "var(--ink-quiet)" };
+  const top = EMOTIONS[stats.topEmotion?.[0]] || { name: "—", color: "var(--ink-quiet)" };
   const items = [
     { l: "volumes",        v: String(stats.total).padStart(2, "0") },
     { l: "avg intensity",  v: stats.avg, suf: "/10" },
-    { l: "top emotion",    v: top.label, color: top.color },
+    { l: "top emotion",    v: top.name, color: top.color },
     { l: "books / month",  v: typeof stats.perMonth === "number" ? stats.perMonth.toFixed(1) : stats.perMonth },
   ];
   return (
@@ -276,7 +276,7 @@ function ReadingRoomFilterBar({ entries, filter, onFilter, sort, onSort, view, o
             onClick={() => onFilter(filter === id ? null : id)}
           >
             <span className="swatch" />
-            {e.label.toLowerCase()}
+            {e.name}
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, opacity: 0.65 }}>·{n}</span>
           </button>
         );

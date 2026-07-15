@@ -16,7 +16,10 @@ import "./DNAView.css";
  * facts with their receipts. All prose is server-templated — we render, never author.
  */
 
-const emoLabel = (slug) => EMOTIONS[slug]?.label?.toLowerCase() || slug;
+// Analytics/prose surfaces use the plain word ("devastation"), which reads
+// grammatically inline ("you read toward devastation"); the first-person phrase
+// is for the tagging surfaces. [VISION §4 — `name` is the single-word form.]
+const emoLabel = (slug) => EMOTIONS[slug]?.name?.toLowerCase() || slug;
 const emoColor = (slug) => EMOTIONS[slug]?.color || "var(--ink)";
 
 // Turn a { slug: weight } frequency vector into a sorted, capped list.

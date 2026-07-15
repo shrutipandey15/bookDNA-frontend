@@ -1,6 +1,7 @@
 import {
-  Flame, CloudMoon, Zap, Heart, Coffee, Sparkles,
-  Eye, Droplets, Lightbulb, Telescope, Leaf, Wind, Moon, HelpCircle,
+  Flame, CloudMoon, Heart, Coffee, Sparkles,
+  Eye, Droplets, Telescope, Leaf, Wind, HelpCircle,
+  Sun, Laugh, Hourglass, Aperture, Meh, Frown, Tornado, CircleOff,
 } from "lucide-react";
 
 // ── Shared emotion vocabulary [F1.5 / P2-9, P2-12] ──
@@ -15,42 +16,69 @@ import {
 // can drift) and stay local. The server's `symbol` (emoji) is stored too, if a
 // surface prefers it.
 const PRESENTATION = {
-  rage:        { Icon: Flame,     glyph: "◉" },
-  dread:       { Icon: CloudMoon, glyph: "◐" },
-  chaos:       { Icon: Zap,       glyph: "✦" },
-  desire:      { Icon: Heart,     glyph: "♡" },
-  comfort:     { Icon: Coffee,    glyph: "○" },
-  catharsis:   { Icon: Sparkles,  glyph: "✧" },
-  tenderness:  { Icon: Eye,       glyph: "◎" },
-  grief:       { Icon: Droplets,  glyph: "◦" },
-  wit:         { Icon: Lightbulb, glyph: "‡" },
-  awe:         { Icon: Telescope, glyph: "✺" },
-  longing:     { Icon: Leaf,      glyph: "❋" },
+  // It hurt
   devastation: { Icon: Wind,      glyph: "·" },
-  two_am:      { Icon: Moon,      glyph: "☾" },
+  grief:       { Icon: Droplets,  glyph: "◦" },
+  dread:       { Icon: CloudMoon, glyph: "◐" },
+  rage:        { Icon: Flame,     glyph: "◉" },
+  // It held me
+  comfort:     { Icon: Coffee,    glyph: "○" },
+  tenderness:  { Icon: Eye,       glyph: "◎" },
+  joy:         { Icon: Sun,       glyph: "☀" },
+  amusement:   { Icon: Laugh,     glyph: "‡" },
+  // It wanted something
+  longing:     { Icon: Leaf,      glyph: "❋" },
+  desire:      { Icon: Heart,     glyph: "♡" },
+  nostalgia:   { Icon: Hourglass, glyph: "☾" },
+  // It moved me
+  awe:         { Icon: Telescope, glyph: "✺" },
+  recognition: { Icon: Aperture,  glyph: "◈" },
+  catharsis:   { Icon: Sparkles,  glyph: "✧" },
+  // It lost me
+  boredom:     { Icon: Meh,       glyph: "—" },
+  revulsion:   { Icon: Frown,     glyph: "✗" },
+  confusion:   { Icon: Tornado,   glyph: "✦" },
+  indifference:{ Icon: CircleOff, glyph: "◌" },
 };
 
-// Canonical seed — mirrors the backend's served vocabulary (slug/name/color/
-// description). Kept in sync by hydrateEmotions() at runtime.
+// Canonical seed — mirrors the backend's served vocabulary. Each emotion carries
+// BOTH a `phrase` (the first-person line the UI shows — "it wrecked me") and a
+// `name` (the plain word — "devastation", used where a single token is wanted).
+// Per VISION §4 the reader sees phrases, never the word/slug. `family`, `phrase`,
+// `name`, and `color` are all OWNED BY THE BACKEND and refreshed from GET
+// /emotions by hydrateEmotions() so nothing drifts. Order matters: families
+// render in first-appearance order.
+// Tuple: [slug, family, name(word), phrase, color, description]
 const SEED = [
-  ["grief",       "Grief",       "#6B4F8E", "Loss, absence, mourning — the ache"],
-  ["desire",      "Desire",      "#9B5B8E", "Longing, wanting, romantic tension"],
-  ["rage",        "Rage",        "#C44B4B", "Fury, injustice, the urge to burn things down"],
-  ["dread",       "Dread",       "#4B6B8E", "Anxiety, foreboding, existential unease"],
-  ["comfort",     "Comfort",     "#8E6B4B", "Safety, warmth, being held by a book"],
-  ["awe",         "Awe",         "#4B7B6B", "Wonder, scale, the sublime"],
-  ["catharsis",   "Catharsis",   "#C9A96E", "Release, relief, the exhale after tension"],
-  ["two_am",      "2AM",         "#3D4B6B", "Intimacy, rawness, the feeling of 3am thoughts"],
-  ["chaos",       "Chaos",       "#6B8E4B", "Unpredictability, wild energy, plot velocity"],
-  ["tenderness",  "Tenderness",  "#9B6B7B", "Gentle love, care, soft emotional moments"],
-  ["wit",         "Wit",         "#7B8E4B", "Sharp humour, intelligence, the perfectly placed line"],
-  ["longing",     "Longing",     "#5B6B8E", "Nostalgia, distance, wanting what you cannot have"],
-  ["devastation", "Devastation", "#3D2B3D", "Complete emotional destruction — the books that ruin you"],
+  // It hurt
+  ["devastation", "It hurt", "devastation", "it wrecked me",        "#3D2B3D", "Complete emotional destruction — the books that ruin you"],
+  ["grief",       "It hurt", "grief",       "it grieved me",        "#6B4F8E", "Loss, absence, mourning — the ache"],
+  ["dread",       "It hurt", "dread",       "it kept me on edge",   "#4B6B8E", "Anxiety, foreboding, existential unease"],
+  ["rage",        "It hurt", "rage",        "it made me furious",   "#C44B4B", "Fury, injustice, the urge to burn things down"],
+  // It held me
+  ["comfort",     "It held me", "comfort",    "it comforted me",   "#8E6B4B", "Safety, warmth, being held by a book"],
+  ["tenderness",  "It held me", "tenderness", "it was tender",     "#9B6B7B", "Gentle love, care, soft emotional moments"],
+  ["joy",         "It held me", "joy",        "it made me happy",  "#E0A458", "Delight, gladness, the lightness a book can give"],
+  ["amusement",   "It held me", "amusement",  "it made me laugh",  "#C9B24B", "Sharp humour, wit, the perfectly placed line that makes you grin"],
+  // It wanted something
+  ["longing",     "It wanted something", "longing",   "it left me aching", "#5B6B8E", "Distance, wanting what you cannot have"],
+  ["desire",      "It wanted something", "desire",    "it stirred me",     "#9B5B8E", "Wanting, romantic tension, the pull toward"],
+  ["nostalgia",   "It wanted something", "nostalgia", "it took me back",   "#B07B4B", "The ache of memory, a time you cannot return to"],
+  // It moved me
+  ["awe",         "It moved me", "awe",         "it stunned me",           "#4B7B6B", "Wonder, scale, the sublime"],
+  ["recognition", "It moved me", "recognition", "it saw me",               "#4B8E8A", "Being seen — the book that knew you already"],
+  ["catharsis",   "It moved me", "catharsis",   "it broke something open", "#C9A96E", "Release, relief, the exhale after tension"],
+  // It lost me
+  ["boredom",     "It lost me", "boredom",      "it bored me",     "#8A8A7A", "Flatness, the pages that wouldn't turn"],
+  ["revulsion",   "It lost me", "revulsion",    "it repelled me",  "#6B7A4B", "Disgust, recoil, wanting to put it down"],
+  ["confusion",   "It lost me", "confusion",    "it confused me",  "#7B6B9B", "Lost the thread, couldn't follow, unmoored"],
+  ["indifference","It lost me", "indifference", "it left me cold", "#9A9A9A", "Nothing landed — you closed it and felt nothing"],
 ];
 
 export const EMOTIONS = {};
-for (const [slug, label, color, desc] of SEED) {
-  EMOTIONS[slug] = { label, color, desc, symbol: null, ...(PRESENTATION[slug] || {}) };
+for (const [slug, family, name, phrase, color, desc] of SEED) {
+  // `label` is the primary display string — the phrase. `name` is the compact word.
+  EMOTIONS[slug] = { family, name, label: phrase, color, desc, symbol: null, ...(PRESENTATION[slug] || {}) };
 }
 
 // EMO_LIST holds live references to the EMOTIONS objects. hydrateEmotions mutates
@@ -66,13 +94,33 @@ export function hydrateEmotions(vocab) {
       EMOTIONS[item.slug] = { ...(PRESENTATION[item.slug] || {}) };
       EMO_LIST.push([item.slug, EMOTIONS[item.slug]]);
     }
-    Object.assign(EMOTIONS[item.slug], {
-      label: item.name,
+    // The reader-facing label is the phrase ("it wrecked me"); fall back to the
+    // plain word if an older server hasn't started serving `phrase` yet. Only
+    // overwrite fields the payload actually carries, so a partial vocab item
+    // never clobbers a good seed value (e.g. wiping `family`) with undefined.
+    const patch = {
+      family: item.family,
+      name: item.name,
+      label: item.phrase || item.name,
       color: item.color,
       desc: item.description,
       symbol: item.symbol,
-    });
+    };
+    for (const [k, v] of Object.entries(patch)) {
+      if (v !== undefined) EMOTIONS[item.slug][k] = v;
+    }
   }
+}
+
+export function getEmotionFamilies() {
+  const order = [];
+  const byFamily = new Map();
+  for (const [slug, e] of EMO_LIST) {
+    if (!e.family) continue;
+    if (!byFamily.has(e.family)) { byFamily.set(e.family, []); order.push(e.family); }
+    byFamily.get(e.family).push([slug, e]);
+  }
+  return order.map((family) => ({ family, emotions: byFamily.get(family) }));
 }
 
 export function getPrimaryEmotion(entry) {

@@ -11,7 +11,8 @@ import { EMOTIONS } from "../../services/emotions";
  * Data is the backend's `profiles.{enduring,current}` frequency vectors plus a
  * scalar `drift` (0..1). We describe the shift factually; we do not author insight prose.
  */
-const emoLabel = (slug) => EMOTIONS[slug]?.label?.toLowerCase() || slug;
+// Word form for inline prose ("you read toward devastation"), not the phrase.
+const emoLabel = (slug) => EMOTIONS[slug]?.name?.toLowerCase() || slug;
 const emoColor = (slug) => EMOTIONS[slug]?.color || "var(--ink)";
 
 const DRIFT_VISIBLE = 0.1; // below this the profiles are effectively steady

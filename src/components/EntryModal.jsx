@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Loader2, BookOpen, Pencil } from "lucide-react";
-import { EMO_LIST, EMOTIONS } from "../services/emotions";
+import { EMOTIONS, getEmotionFamilies } from "../services/emotions";
 import { searchBooks } from "../services/api";
 import "./EntryModal.css";
 
@@ -9,25 +9,80 @@ const INTENSITY_LABELS = [
   "felt it", "felt it", "obsessed", "obsessed", "wrecked", "wrecked",
 ];
 
+// Strength an emotion gets the moment you tap it. Keep tagging fast: default,
+// adjust only when it matters. [Part B]
+const DEFAULT_STRENGTH = 6;
+
 const STATUS_OPTIONS = [
   { value: "want_to_read", label: "want to read" },
   { value: "reading",      label: "reading" },
   { value: "finished",     label: "finished" },
 ];
 
+// "Would you read it again?" — a disambiguating axis, optional, never gates save.
+const VERDICT_OPTIONS = [
+  { value: "yes",      label: "yes" },
+  { value: "no",       label: "no" },
+  { value: "not_sure", label: "not sure" },
+];
+
+// Why a book was put down — only meaningful (and only shown) when abandoned.
+const DNF_OPTIONS = [
+  { value: "bored",         label: "bored" },
+  { value: "too_much",      label: "too much" },
+  { value: "badly_written", label: "badly written" },
+  { value: "wrong_time",    label: "wrong time" },
+  { value: "lost_me",       label: "lost me" },
+  { value: "drifted",       label: "just drifted" },
+];
+
+// A single-select one-tap axis (verdict, DNF reason). Tapping the active option
+// clears it — every axis here is optional. `wrap` lays the taps out as separate
+// chips instead of a joined segmented control (for the longer DNF list).
+function OneTap({ label, options, value, onChange, wrap }) {
+  return (
+    <div className="em-field">
+      <div className="label-sm em-field-label">{label}</div>
+      <div className={`em-oneshot ${wrap ? "em-oneshot-wrap" : ""}`} role="radiogroup" aria-label={label}>
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={value === o.value}
+            className={`em-tap ${value === o.value ? "active" : ""}`}
+            onClick={() => onChange(value === o.value ? null : o.value)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function EntryModal({ entry, onSave, onDelete, onClose, onFinish, onCheckin }) {
   const [title, setTitle] = useState(entry?.title || "");
   const [author, setAuthor] = useState(entry?.author || "");
   const [coverUrl, setCoverUrl] = useState(entry?.cover_url || "");
   const [isbn, setIsbn] = useState(entry?.isbn || "");
-  const [intensity, setIntensity] = useState(entry?.intensity || 5);
-  const [emotions, setEmotions] = useState(entry?.emotions?.map((e) => e.emotion_id) || []);
+  // Per-emotion intensity [Part B]: each tagged emotion carries its own 1–10
+  // strength. Round-trips from EmotionOut.strength on edit.
+  const [emotions, setEmotions] = useState(
+    entry?.emotions?.map((e) => ({ id: e.emotion_id, strength: e.strength ?? DEFAULT_STRENGTH })) || [],
+  );
+  const [openFamily, setOpenFamily] = useState(null);
   const [quote, setQuote] = useState(entry?.quote || "");
   // Full entry fields [F2.1 / B2.4]: reading status, dates, private notes.
   const [status, setStatus] = useState(entry?.status || "finished");
   const [startedAt, setStartedAt] = useState(entry?.started_at || "");
   const [finishedAt, setFinishedAt] = useState(entry?.finished_at || "");
   const [notes, setNotes] = useState(entry?.notes || "");
+  // Disambiguating axes [Part C]: both optional, both skippable.
+  const [verdict, setVerdict] = useState(entry?.verdict || null);
+  const [dnfReason, setDnfReason] = useState(entry?.dnf_reason || null);
+
+  const families = getEmotionFamilies();
 
   const [searchResults, setSearchResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
@@ -89,7 +144,16 @@ export default function EntryModal({ entry, onSave, onDelete, onClose, onFinish,
     else if (e.key === "Enter" && selectedIndex >= 0) { e.preventDefault(); selectBook(searchResults[selectedIndex]); }
     else if (e.key === "Escape") { setShowResults(false); }
   };
-  const toggleEmo = (id) => setEmotions((prev) => prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id]);
+  const isSelected = (id) => emotions.some((e) => e.id === id);
+  const toggleEmo = (id) => setEmotions((prev) =>
+    prev.some((e) => e.id === id)
+      ? prev.filter((e) => e.id !== id)
+      : [...prev, { id, strength: DEFAULT_STRENGTH }]);
+  const setStrength = (id, strength) => setEmotions((prev) =>
+    prev.map((e) => (e.id === id ? { ...e, strength } : e)));
+
+  const strengths = emotions.map((e) => e.strength);
+  const topStrength = strengths.length ? Math.max(...strengths) : null;
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -98,19 +162,24 @@ export default function EntryModal({ entry, onSave, onDelete, onClose, onFinish,
       author: author.trim() || null,
       cover_url: coverUrl || null,
       isbn: isbn || null,
-      intensity,
-      emotions: emotions.map((id) => ({ emotion_id: id, strength: intensity })),
+      // The shared slider is gone; keep the legacy scalar in sync as the strongest
+      // felt emotion so downstream that still reads `intensity` doesn't break.
+      intensity: topStrength ?? 5,
+      emotions: emotions.map((e) => ({ emotion_id: e.id, strength: e.strength })),
       quote: quote.trim() || null,
       status,
       started_at: startedAt || null,
       finished_at: finishedAt || null,
       notes: notes.trim() || null,
+      verdict: verdict || null,
+      // DNF reason only means anything on an abandoned book.
+      dnf_reason: status === "abandoned" ? (dnfReason || null) : null,
     }, entry?.id || null);
   };
   const handleDelete = () => { if (entry?.id) onDelete(entry.id); };
 
   const isEdit = !!entry?.id;
-  const primaryEmo = emotions[0] ? EMOTIONS[emotions[0]] : null;
+  const primaryEmo = emotions[0] ? EMOTIONS[emotions[0].id] : null;
   const coverColor = primaryEmo?.color || "var(--oxblood)";
   const entryNo = entry?.id ? String(entry.id).slice(-3).padStart(3, "0") : "NEW";
   const firstWords = title ? title.split(" ").slice(0, 3).join(" ") : "";
@@ -129,12 +198,16 @@ export default function EntryModal({ entry, onSave, onDelete, onClose, onFinish,
           <div>
             <div className="em-left-title">{title || "Untitled volume"}</div>
             <div className="em-left-int-wrap">
-              <div className="em-left-int-label">INTENSITY</div>
+              <div className="em-left-int-label">{topStrength != null ? "STRONGEST FELT" : "UNTAGGED"}</div>
               <div className="em-left-int-row">
-                <span className="em-left-int-num">{intensity}</span>
-                <span className="em-left-int-of">/ 10</span>
+                <span className="em-left-int-num">{topStrength ?? "—"}</span>
+                {topStrength != null && <span className="em-left-int-of">/ 10</span>}
               </div>
-              <div className="em-left-int-word">{INTENSITY_LABELS[intensity] || ""}.</div>
+              <div className="em-left-int-word">
+                {topStrength != null
+                  ? `${INTENSITY_LABELS[topStrength] || ""}.`
+                  : `${emotions.length} feeling${emotions.length === 1 ? "" : "s"} tagged`}
+              </div>
             </div>
           </div>
         </div>
@@ -250,45 +323,102 @@ export default function EntryModal({ entry, onSave, onDelete, onClose, onFinish,
 
         <div className="em-field">
           <div className="label-sm em-field-label">what did it make you feel?</div>
-          <div className="em-emo-chips">
-            {EMO_LIST.map(([id, e]) => {
-              const active = emotions.includes(id);
+          {/* Five doors → the emotions inside. Recognition, not recall. [Part A] */}
+          <div className="em-fam-doors">
+            {families.map(({ family, emotions: famEmos }) => {
+              const count = famEmos.filter(([id]) => isSelected(id)).length;
+              const open = openFamily === family;
               return (
                 <button
-                  key={id}
+                  key={family}
                   type="button"
-                  className={`chip ${active ? "active" : ""}`}
-                  style={{ "--chip-c": e.color }}
-                  onClick={() => toggleEmo(id)}
+                  className={`em-fam-door ${open ? "open" : ""} ${count ? "has-sel" : ""}`}
+                  aria-expanded={open}
+                  onClick={() => setOpenFamily(open ? null : family)}
                 >
-                  <span className="swatch" />
-                  {e.label.toLowerCase()}
+                  {family}
+                  {count > 0 && <span className="em-fam-count">{count}</span>}
                 </button>
               );
             })}
           </div>
+          {openFamily && (
+            <div className="em-emo-chips em-fam-chips">
+              {(families.find((f) => f.family === openFamily)?.emotions || []).map(([id, e]) => {
+                const active = isSelected(id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`chip ${active ? "active" : ""}`}
+                    style={{ "--chip-c": e.color }}
+                    aria-pressed={active}
+                    onClick={() => toggleEmo(id)}
+                  >
+                    <span className="swatch" />
+                    {(e.label || id).toLowerCase()}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <div className="em-field">
-          <div className="em-int-head">
-            <div className="label-sm">emotional intensity</div>
-            <div className="em-int-word">{INTENSITY_LABELS[intensity] || ""}.</div>
+        {emotions.length > 0 && (
+          <div className="em-field">
+            <div className="label-sm em-field-label">how strong was each?</div>
+            <div className="em-strengths">
+              {emotions.map(({ id, strength }) => {
+                const e = EMOTIONS[id] || {};
+                const label = (e.label || id).toLowerCase();
+                return (
+                  <div className="em-strength-row" key={id}>
+                    <span className="em-strength-name">
+                      <span className="swatch" style={{ background: e.color }} />
+                      {label}
+                    </span>
+                    <input
+                      className="em-strength-range"
+                      type="range"
+                      min="1" max="10"
+                      value={strength}
+                      aria-label={`${label} strength`}
+                      onChange={(ev) => setStrength(id, +ev.target.value)}
+                    />
+                    <span className="em-strength-num">{strength}</span>
+                    <button
+                      type="button"
+                      className="em-strength-x"
+                      aria-label={`Remove ${label}`}
+                      onClick={() => toggleEmo(id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="em-int-slider">
-            <div className="em-int-track" />
-            <div className="em-int-fill" style={{ width: `${intensity * 10}%` }} />
-            <input
-              className="em-int-range"
-              type="range"
-              min="1" max="10"
-              value={intensity}
-              onChange={(e) => setIntensity(+e.target.value)}
-            />
-            {[1, 3, 5, 7, 10].map((n) => (
-              <span key={n} className="em-int-tick" style={{ left: `calc(${n * 10}% - 6px)` }}>{n}</span>
-            ))}
-          </div>
-        </div>
+        )}
+
+        {/* Verdict — a disambiguating one-tap. Optional, skippable. [Part C] */}
+        <OneTap
+          label="would you read it again?"
+          options={VERDICT_OPTIONS}
+          value={verdict}
+          onChange={setVerdict}
+        />
+
+        {/* DNF reason — only surfaces when the book was abandoned. [Part C] */}
+        {status === "abandoned" && (
+          <OneTap
+            label="why did you put it down?"
+            options={DNF_OPTIONS}
+            value={dnfReason}
+            onChange={setDnfReason}
+            wrap
+          />
+        )}
 
         <div className="em-field">
           <div className="label-sm em-field-label">the line that hit hardest</div>

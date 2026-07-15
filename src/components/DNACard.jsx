@@ -58,7 +58,7 @@ const DNACard = forwardRef(function DNACard({ profile, username, allowShare = fa
           return (
             <div key={t.emotion_id} className="dna-bar-row">
               <span className="dna-dot" style={{ background: em.color, boxShadow: `0 0 6px ${em.color}` }} />
-              <span className="dna-bar-label">{em.label.toLowerCase()}</span>
+              <span className="dna-bar-label">{(em.name || em.label).toLowerCase()}</span>
               <span className="dna-bar-track">
                 <span className="dna-bar-fill" style={{ width: `${(t.count / maxC) * 100}%`, background: em.color }} />
               </span>

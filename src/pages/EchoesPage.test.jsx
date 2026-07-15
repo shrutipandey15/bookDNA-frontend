@@ -59,13 +59,13 @@ describe("EchoesPage feed [F3.3]", () => {
     expect(screen.queryByText(/you're caught up/i)).toBeNull();
   });
 
-  it("makes all 13 emotion chips reachable in the filter row [F6.3 / P5-5]", async () => {
+  it("makes all 18 emotion chips reachable in the filter row [F6.3 / P5-5]", async () => {
     getEchoFeed.mockResolvedValue(feed);
     render(<EchoesPage />);
     await waitFor(() => expect(screen.getByText("first echo")).toBeInTheDocument());
     const filters = screen.getByText("a feeling").closest(".ep-filters");
-    // 13 canonical emotions + the "everything" reset chip = 14 chips.
-    expect(within(filters).getAllByRole("button")).toHaveLength(14);
+    // 18 canonical emotions + the "everything" reset chip = 19 chips.
+    expect(within(filters).getAllByRole("button")).toHaveLength(19);
   });
 
   it("renders NO public count anywhere across the feed cards [F6.5]", async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // Book search is network — stub it so the modal renders offline.
@@ -81,5 +81,71 @@ describe("EntryModal full entry fields [F2.1 / B2.4]", () => {
       expect(container.querySelectorAll('input[type="date"]')).toHaveLength(1),
     );
     expect(screen.getByText("started")).toBeInTheDocument();
+  });
+});
+
+describe("EntryModal new vocabulary + per-emotion intensity [Part A/B/C]", () => {
+  const base = (over = {}) => ({ id: "a", title: "X", status: "finished", emotions: [], ...over });
+
+  it("renders the five family doors and reveals emotions only on tap", async () => {
+    render(<EntryModal entry={base()} onSave={vi.fn()} onDelete={vi.fn()} onClose={vi.fn()} />);
+    // Family doors present.
+    expect(screen.getByRole("button", { name: /It hurt/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /It lost me/i })).toBeInTheDocument();
+    // Emotions inside a family are hidden until the door is tapped. Chips show the
+    // human phrase, never the word/slug.
+    expect(screen.queryByRole("button", { name: "it wrecked me" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /It hurt/i }));
+    expect(screen.getByRole("button", { name: "it wrecked me" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "it grieved me" })).toBeInTheDocument();
+  });
+
+  it("saves two emotions at independent strengths", async () => {
+    const onSave = vi.fn();
+    render(<EntryModal entry={base()} onSave={onSave} onDelete={vi.fn()} onClose={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /It hurt/i }));
+    await userEvent.click(screen.getByRole("button", { name: "it wrecked me" }));
+    await userEvent.click(screen.getByRole("button", { name: "it grieved me" }));
+    fireEvent.change(screen.getByLabelText("it wrecked me strength"), { target: { value: "9" } });
+    fireEvent.change(screen.getByLabelText("it grieved me strength"), { target: { value: "2" } });
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+
+    expect(onSave.mock.calls[0][0].emotions).toEqual(
+      expect.arrayContaining([
+        { emotion_id: "devastation", strength: 9 },
+        { emotion_id: "grief", strength: 2 },
+      ]),
+    );
+  });
+
+  it("round-trips each emotion's strength from the entry on edit", () => {
+    render(
+      <EntryModal
+        entry={base({ emotions: [{ emotion_id: "grief", strength: 3 }, { emotion_id: "rage", strength: 8 }] })}
+        onSave={vi.fn()}
+        onDelete={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("it grieved me strength")).toHaveValue("3");
+    expect(screen.getByLabelText("it made me furious strength")).toHaveValue("8");
+  });
+
+  it("saves the verdict and leaves dnf_reason null on a non-abandoned book", async () => {
+    const onSave = vi.fn();
+    render(<EntryModal entry={base()} onSave={onSave} onDelete={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.queryByText(/put it down/i)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: "no" }));
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ verdict: "no", dnf_reason: null });
+  });
+
+  it("shows the DNF reason only when abandoned and saves it", async () => {
+    const onSave = vi.fn();
+    render(<EntryModal entry={base({ status: "abandoned" })} onSave={onSave} onDelete={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByText(/put it down/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: "just drifted" }));
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ dnf_reason: "drifted" });
   });
 });

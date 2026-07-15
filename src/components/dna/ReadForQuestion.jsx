@@ -51,7 +51,7 @@ export default function ReadForQuestion({ value = [], onSave, onSkip, saving = f
               style={{ "--chip-c": e.color }}
               onClick={() => toggle(slug)}
             >
-              {e.label.toLowerCase()}
+              {e.name}
             </button>
           );
         })}

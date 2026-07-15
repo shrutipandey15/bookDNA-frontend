@@ -72,7 +72,7 @@ export function Heatmap({ data }) {
                 <Fragment key={eid}>
                   <div className="hm-row-label">
                     <span className="hm-row-dot" style={{ background: e.color }} />
-                    <span className="hm-row-name">{e.label.toLowerCase()}</span>
+                    <span className="hm-row-name">{e.name}</span>
                     <span className="hm-row-count">{String(emoTotals[eid] || 0).padStart(2, "0")}</span>
                   </div>
                   {books.map((b) => {
@@ -115,7 +115,7 @@ export function Heatmap({ data }) {
             <div className="card editorial">
               <div className="label" style={{ marginBottom: 10 }}>most felt</div>
               <div className="hm-rail-name" style={{ color: topEmo.color }}>
-                {topEmo.glyph} {topEmo.label}
+                {topEmo.glyph} {topEmo.name}
               </div>
               <div className="hm-rail-sub">
                 in {emoTotals[topEmoId]} / {books.length} books · {topPct}%
@@ -128,9 +128,9 @@ export function Heatmap({ data }) {
             <div className="card editorial">
               <div className="label" style={{ marginBottom: 10 }}>strongest pairing</div>
               <div className="hm-rail-pair">
-                <em style={{ color: EMOTIONS[bestPair[0]]?.color }}>{EMOTIONS[bestPair[0]]?.label.toLowerCase()}</em>
+                <em style={{ color: EMOTIONS[bestPair[0]]?.color }}>{EMOTIONS[bestPair[0]]?.name}</em>
                 {" + "}
-                <em style={{ color: EMOTIONS[bestPair[1]]?.color }}>{EMOTIONS[bestPair[1]]?.label.toLowerCase()}</em>
+                <em style={{ color: EMOTIONS[bestPair[1]]?.color }}>{EMOTIONS[bestPair[1]]?.name}</em>
               </div>
               <div className="hm-rail-sub">
                 co-occur in {bestCount} book{bestCount === 1 ? "" : "s"} · ρ {((bestCount / books.length) * 0.9 + 0.1).toFixed(2)}
@@ -146,7 +146,7 @@ export function Heatmap({ data }) {
                 {blindSpots.map(([id, e]) => (
                   <div className="hm-blind-row" key={id}>
                     <span className="hm-blind-dot" style={{ background: e.color }} />
-                    <span className="hm-blind-name">{e.label.toLowerCase()}</span>
+                    <span className="hm-blind-name">{e.name}</span>
                     <span className="hm-blind-count">0 / {books.length}</span>
                   </div>
                 ))}
@@ -234,7 +234,7 @@ export function Patterns({ stats, heatmap }) {
               <div key={id} className="st-ledger-row" style={{ borderBottom: i < ranked.length - 1 ? "1px solid var(--rule-soft)" : "none" }}>
                 <span className="st-ledger-no">№{String(i + 1).padStart(2, "0")}</span>
                 <span className="st-ledger-dot" style={{ background: e.color }} />
-                <span className="st-ledger-name">{e.label.toLowerCase()}</span>
+                <span className="st-ledger-name">{e.name}</span>
                 <span className="st-ledger-bar">
                   <span style={{ width: `${pct}%`, background: e.color }} />
                 </span>
@@ -251,7 +251,7 @@ export function Patterns({ stats, heatmap }) {
               <div className="st-most">
                 <div className="st-most-circle" style={{ background: top.color }}>{top.glyph}</div>
                 <div>
-                  <div className="st-most-name">{top.label}</div>
+                  <div className="st-most-name">{top.name}</div>
                   <div className="label-sm">
                     in {stats.most_common_emotion_count} book{stats.most_common_emotion_count === 1 ? "" : "s"}
                     {totalBooks ? ` · ${Math.round((stats.most_common_emotion_count / totalBooks) * 100)}%` : ""}
